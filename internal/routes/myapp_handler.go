@@ -6,7 +6,20 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func Setup(app *fiber.App, middleware *middlewares.MiddlewareManager, AuthController *controllers.AuthController, FileController *controllers.FileController, AssistantController *controllers.AssistantController, BussinessController *controllers.BussinessController, UsersController *controllers.UsersController, PrompsController *controllers.PrompsController, LogsController *controllers.LogsController, Password_resetsController *controllers.Password_resetsController, RolesController *controllers.RolesController, PermissionsController *controllers.PermissionsController, WhatsappController *controllers.WhatsappController) {
+func Setup(app *fiber.App,
+	middleware *middlewares.MiddlewareManager,
+	AuthController *controllers.AuthController,
+	FileController *controllers.FileController,
+	AssistantController *controllers.AssistantController,
+	BussinessController *controllers.BussinessController,
+	UsersController *controllers.UsersController,
+	PrompsController *controllers.PrompsController,
+	LogsController *controllers.LogsController,
+	Password_resetsController *controllers.Password_resetsController,
+	RolesController *controllers.RolesController,
+	PermissionsController *controllers.PermissionsController,
+	WhatsappController *controllers.WhatsappController,
+	NumberPhonesController *controllers.NumberPhonesController) {
 
 	app.Get("/", middleware.ValidarApikey(), func(c *fiber.Ctx) error {
 		return c.Send([]byte("Api chatbot whatsapp by SHOMI SA ®️ "))
@@ -79,5 +92,12 @@ func Setup(app *fiber.App, middleware *middlewares.MiddlewareManager, AuthContro
 	api.Post("/Permissions", middleware.ValidarApikey(), PermissionsController.Create)
 	api.Put("/Permissions/:id", middleware.ValidarApikey(), PermissionsController.Update)
 	api.Delete("/Permissions/:id", middleware.ValidarApikey(), PermissionsController.Delete)
+
+	// Añadir estas rutas en tu archivo principal de rutas:
+	api.Get("/number-phones", middleware.ValidarApikey(), NumberPhonesController.GetAll)
+	api.Get("/number-phones/:id", middleware.ValidarApikey(), NumberPhonesController.GetById)
+	api.Post("/number-phones", middleware.ValidarApikey(), NumberPhonesController.Create)
+	api.Put("/number-phones/:id", middleware.ValidarApikey(), NumberPhonesController.Update)
+	api.Delete("/number-phones/:id", middleware.ValidarApikey(), NumberPhonesController.Delete)
 
 }

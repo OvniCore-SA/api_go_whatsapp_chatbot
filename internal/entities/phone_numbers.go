@@ -3,6 +3,7 @@ package entities
 import (
 	"time"
 
+	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos"
 	"gorm.io/gorm"
 )
 
@@ -10,11 +11,32 @@ type NumberPhone struct {
 	ID           int64     `gorm:"primaryKey;autoIncrement"`
 	AssistantsID int64     `gorm:"not null"`                                                              // Clave foránea hacia Assistant
 	Assistant    Assistant `gorm:"foreignKey:AssistantsID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"` // Relación con Assistant
-	PhoneNumber  int64     `gorm:"not null"`
+	NumberPhone  int64     `gorm:"not null"`
 	UUID         string    `gorm:"not null;unique"`
 	Active       bool      `gorm:"default:false"`             // Activo cuando el usuario escanea con éxito el QR
 	Contacts     []Contact `gorm:"foreignKey:NumberPhonesID"` // Relación de uno a muchos con Contact
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 	DeletedAt    gorm.DeletedAt `gorm:"index"` // Soft delete
+}
+
+func MapEntityToNumberPhoneDto(entity NumberPhone) dtos.NumberPhoneDto {
+
+	return dtos.NumberPhoneDto{
+		ID:           entity.ID,
+		AssistantsID: entity.AssistantsID,
+		NumberPhone:  entity.NumberPhone,
+		UUID:         entity.UUID,
+		Active:       entity.Active,
+	}
+}
+
+func MapDtoToNumberPhone(dto dtos.NumberPhoneDto) NumberPhone {
+	return NumberPhone{
+		ID:           dto.ID,
+		AssistantsID: dto.AssistantsID,
+		NumberPhone:  dto.NumberPhone,
+		UUID:         dto.UUID,
+		Active:       dto.Active,
+	}
 }

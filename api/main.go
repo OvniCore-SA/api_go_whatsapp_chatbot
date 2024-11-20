@@ -84,6 +84,10 @@ func main() {
 	AssistantService := services.NewAssistantService(AssistantRepository, FileService, OpenAIAssistantClient)
 	AssistantController := controllers.NewAssistantController(AssistantService)
 
+	NumberPhonesRepository := mysql_client.NewNumberPhonesRepository(db)
+	NumberPhonesService := services.NewNumberPhonesService(NumberPhonesRepository)
+	NumberPhonesController := controllers.NewNumberPhonesController(NumberPhonesService)
+
 	meddlewares := middlewares.MiddlewareManager{}
 
 	// Registrar el middleware para registrar las rutas consultadas
@@ -94,8 +98,8 @@ func main() {
 		TimeZone:   "Local",
 	}))
 
-	// Configuración de rutas
-	routes.Setup(app, &meddlewares, AuthController, FileController, AssistantController, BussinessController, UsersController, PrompsController, LogsController, Password_resetsController, RolesController, PermissionsController, WhatsappController)
+	// Configuración de TODAS las rutas
+	routes.Setup(app, &meddlewares, AuthController, FileController, AssistantController, BussinessController, UsersController, PrompsController, LogsController, Password_resetsController, RolesController, PermissionsController, WhatsappController, NumberPhonesController)
 
 	log.Fatal(app.Listen(":" + config.APP_PORT))
 }
