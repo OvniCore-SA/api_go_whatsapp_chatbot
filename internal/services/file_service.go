@@ -22,14 +22,26 @@ func NewFileService(repository *mysql_client.FileRepository, minioClient *minio.
 	return &FileService{repository: repository, minioClient: minioClient}
 }
 
-func (s *FileService) CreateFile(file *multipart.FileHeader, assistantsID int64, purpose string, fileIDOpenAI string) (entities.File, error) {
-	// Subir archivo a MinIO y crear el registro en la base de datos
-	// Suponiendo una función `uploadToMinIO` que maneja la subida
-	filePath, err := uploadToMinIO(s.minioClient, file)
+func (s *FileService) CreateFile(fileHeader *multipart.FileHeader, assistantsID int64, purpose string, fileIDOpenAI string) (entities.File, error) {
+	// Abrir el archivo para obtener su contenido
+	file, err := fileHeader.Open()
 	if err != nil {
-		return entities.File{}, err
+		return entities.File{}, fmt.Errorf("failed to open file: %w", err)
+	}
+	defer file.Close()
+
+	// Obtener el nombre del archivo, tamaño y tipo de contenido
+	fileName := fileHeader.Filename
+	fileSize := fileHeader.Size
+	contentType := fileHeader.Header.Get("Content-Type")
+
+	// Subir archivo a MinIO
+	filePath, err := uploadToMinIO(s.minioClient, file, fileName, fileSize, contentType)
+	if err != nil {
+		return entities.File{}, fmt.Errorf("failed to upload file to MinIO: %w", err)
 	}
 
+	// Crear el registro en la base de datos
 	fileRecord := entities.File{
 		AssistantsID:  assistantsID,
 		Filename:      filePath,
@@ -40,7 +52,7 @@ func (s *FileService) CreateFile(file *multipart.FileHeader, assistantsID int64,
 	}
 
 	if err := s.repository.Create(fileRecord); err != nil {
-		return entities.File{}, err
+		return entities.File{}, fmt.Errorf("failed to save file record to database: %w", err)
 	}
 
 	return fileRecord, nil
@@ -84,26 +96,24 @@ func (s *FileService) DeleteFile(id int64) error {
 
 	return s.repository.Delete(id)
 }
-func uploadToMinIO(client *minio.Client, file *multipart.FileHeader) (string, error) {
-	fileContent, err := file.Open()
-	if err != nil {
-		return "", err
-	}
-	defer fileContent.Close()
+func uploadToMinIO(client *minio.Client, file multipart.File, fileName string, fileSize int64, contentType string) (string, error) {
+	// Generar un nombre único para el archivo
+	uniqueFileName := fmt.Sprintf("%d-%s", time.Now().Unix(), fileName)
 
-	filename := fmt.Sprintf("%d-%s", time.Now().Unix(), file.Filename)
-	_, err = client.PutObject(
+	// Subir el archivo al bucket de MinIO
+	_, err := client.PutObject(
 		context.Background(),
 		config.MINIO_BUCKET_NAME, // Cambia esto por el nombre de tu bucket
-		filename,
-		fileContent,
-		file.Size,
-		minio.PutObjectOptions{ContentType: file.Header.Get("Content-Type")},
+		uniqueFileName,
+		file,
+		fileSize,
+		minio.PutObjectOptions{ContentType: contentType},
 	)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to upload file to MinIO: %w", err)
 	}
-	return filename, nil
+
+	return uniqueFileName, nil
 }
 
 func deleteFromMinIO(client *minio.Client, filename string) error {

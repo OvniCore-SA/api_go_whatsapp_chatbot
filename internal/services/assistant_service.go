@@ -81,30 +81,61 @@ func (s *AssistantService) UploadFileToGPT(fileContent io.Reader, filename strin
 	return result.ID, nil
 }
 
-func (m *AssistantService) CreateAssistantWithFile(data dtos.AssistantDto, file multipart.File, namefile string) (dtos.AssistantDto, error) {
-	// Creo un archivo en OpenAI
-	fileID, err := m.openAIAssistantService.UploadFileToGPT(file, namefile)
+func (m *AssistantService) CreateAssistantWithFile(data dtos.AssistantDto, fileHeader *multipart.FileHeader) (dtos.AssistantDto, error) {
+	// Abrir el archivo
+	fileContent, err := fileHeader.Open()
+	if err != nil {
+		return dtos.AssistantDto{}, fmt.Errorf("unable to open file: %w", err)
+	}
+	defer fileContent.Close()
+
+	// Subir archivo a OpenAI
+	fileIDOpenAI, err := m.openAIAssistantService.UploadFileToGPT(fileContent, fileHeader.Filename)
+	if err != nil {
+		return dtos.AssistantDto{}, err
+	}
+
+	// Restablecer el cursor después de subir a OpenAI
+	if seeker, ok := fileContent.(io.Seeker); ok {
+		_, err := seeker.Seek(0, io.SeekStart)
+		if err != nil {
+			return dtos.AssistantDto{}, fmt.Errorf("failed to reset file cursor after OpenAI upload: %w", err)
+		}
+	}
+
+	// Crear vector store en OpenAI
+	vectorStoreID, err := m.openAIAssistantService.CreateVectorStore(fileHeader.Filename)
+	if err != nil {
+		return dtos.AssistantDto{}, err
+	}
+
+	// Asignar archivo al vector store
+	err = m.openAIAssistantService.addFileToVectorStore(vectorStoreID, fileIDOpenAI)
 	if err != nil {
 		return dtos.AssistantDto{}, err
 	}
 
 	// Crear el asistente en OpenAI
-	assistantID, err := m.openAIAssistantService.CreateAssistant(data.Name, data.Instructions, config.OPENAI_MODEL_USE)
-	if err != nil {
-		return dtos.AssistantDto{}, err
-	}
-
-	// Guardo el assistant en DB
-
-	// Guardo el file en DB
-
-	// Asociar el vector store con el asistente
-	err = m.openAIAssistantService.AddFileToAssistant(assistantID, fileID)
+	assistantID, err := m.openAIAssistantService.CreateAssistant(data.Name, data.Instructions, config.OPENAI_MODEL_USE, vectorStoreID)
 	if err != nil {
 		return dtos.AssistantDto{}, err
 	}
 
 	data.OpenaiAssistantsID = assistantID
+	assistantDB := entities.MapDtoToAssistant(data)
+
+	// Guardar el asistente en la base de datos
+	err = m.repository.Create(&assistantDB)
+	if err != nil {
+		return dtos.AssistantDto{}, err
+	}
+
+	// Subir a MinIO y registrar en DB
+	_, err = m.serviceFile.CreateFile(fileHeader, assistantDB.ID, "assistants", fileIDOpenAI)
+	if err != nil {
+		return dtos.AssistantDto{}, err
+	}
+
 	return data, nil
 }
 

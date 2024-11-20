@@ -16,36 +16,27 @@ import (
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos/whatsapp"
 	metaapi "github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos/whatsapp/metaApi"
-	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities/filters"
 )
 
 type WhatsappService struct {
-	usersService             *UsersService
-	prompsService            *PrompsService
-	logsService              *LogsService
-	opcionesPreguntasService *OpcionesPreguntasService
-	metaApps                 *MetaAppsService
-	chatbotService           *ChatbotsService
-	openAIService            *OpenAIService
-	resumesService           *ResumesService
-	utilService              *UtilService
-	ollamaService            *OllamaService
-	userSessions             map[string]*whatsapp.UserSession // Mapa para almacenar sesiones por PhoneNumberID
+	usersService  *UsersService
+	prompsService *PrompsService
+	logsService   *LogsService
+	openAIService *OpenAIService
+	utilService   *UtilService
+	ollamaService *OllamaService
+	userSessions  map[string]*whatsapp.UserSession // Mapa para almacenar sesiones por PhoneNumberID
 }
 
-func NewWhatsappService(usersService *UsersService, prompsService *PrompsService, logsService *LogsService, opcionesPreguntasService *OpcionesPreguntasService, metaApps *MetaAppsService, chatbotService *ChatbotsService, openAIService *OpenAIService, utilService *UtilService, resumeService *ResumesService, ollamaService *OllamaService) *WhatsappService {
+func NewWhatsappService(usersService *UsersService, prompsService *PrompsService, logsService *LogsService, openAIService *OpenAIService, utilService *UtilService, ollamaService *OllamaService) *WhatsappService {
 	return &WhatsappService{
-		usersService:             usersService,
-		prompsService:            prompsService,
-		logsService:              logsService,
-		opcionesPreguntasService: opcionesPreguntasService,
-		metaApps:                 metaApps,
-		chatbotService:           chatbotService,
-		openAIService:            openAIService, // Inicialización del servicio de OpenAI
-		resumesService:           resumeService,
-		utilService:              utilService,
-		ollamaService:            ollamaService,
-		userSessions:             make(map[string]*whatsapp.UserSession),
+		usersService:  usersService,
+		prompsService: prompsService,
+		logsService:   logsService,
+		openAIService: openAIService,
+		utilService:   utilService,
+		ollamaService: ollamaService,
+		userSessions:  make(map[string]*whatsapp.UserSession),
 	}
 }
 
@@ -160,26 +151,6 @@ func (service *WhatsappService) processMessage(value whatsapp.Value) error {
 	// Verificar si existe una sesión para este phoneNumberID
 	session, exists := service.userSessions[phoneNumberID]
 
-	// Obtener el chatbot relacionado
-	chatbot, err := service.chatbotService.GetChatbotByPhoneNumberID(phoneNumberID)
-	if err != nil {
-		return fmt.Errorf("error retrieving chatbot for phoneNumberID %s: %v", phoneNumberID, err)
-	}
-
-	if !chatbot.OptionsMenu {
-		filterForMetaApp := filters.PrompsFiltro{
-			MetaAppsId: chatbot.MetaApps.ID,
-		}
-		promptForMetaApp, err := service.prompsService.GetByFilter(filterForMetaApp)
-		if err != nil {
-			return fmt.Errorf("error retrieving metaApps: " + err.Error())
-		}
-		if !exists || isSessionExpired(session, currentTime) {
-			return service.handleNewSessionForChatbotOptionsMenuFalse(phoneNumberID, sender, text, currentTime, &chatbot, &promptForMetaApp)
-		}
-		return service.handleExistingSessionForChatbotOptionsMenuFalse(sender, text, &chatbot, &promptForMetaApp)
-	}
-
 	if !exists || isSessionExpired(session, currentTime) {
 		return service.handleNewSession(phoneNumberID, sender, currentTime)
 	}
@@ -190,33 +161,15 @@ func (service *WhatsappService) processMessage(value whatsapp.Value) error {
 
 func (service *WhatsappService) handleExistingSessionForChatbotOptionsMenuFalse(sender string, text string, chatbot *dtos.ChatbotsDto, promps *dtos.PrompsDto) error {
 	// Buscar el Resume relacionado al chatbot
-	resume, err := service.resumesService.GetResumeByChatbotID(chatbot.ID)
-	if err != nil {
-		return fmt.Errorf("error retrieving resume for chatbot ID %d: %v", chatbot.ID, err)
-	}
 
 	// Crear el mensaje para OpenAI sin saludo
-	requestUserAndPrompt := "NO SALUDES AL USUARIO PORQUE NO ES SU PRIMER MENSAJE.\n\nConsulta del usuario: " + text + ".\n" + resume.RequestToResolve
 
 	var openAiResponse string
-	if chatbot.GptUse == "CHATGPT" {
-		// Enviar el prompt a OpenAI junto con el Resume y la consulta del usuario
-		openAiResponse, err = service.openAIService.SendMessageBasicToOpenAI(requestUserAndPrompt, promps.Descripcion)
-		if err != nil {
-			return fmt.Errorf("error retrieving response from OpenAI: %v", err)
-		}
-	} else {
-		// Enviar el prompt a OpenAI junto con el Resume y la consulta del usuario
-		openAiResponse, err = service.ollamaService.SendMessageToChat(requestUserAndPrompt, promps.Descripcion)
-		if err != nil {
-			return fmt.Errorf("error retrieving response from OpenAI: %v", err)
-		}
-	}
 
 	response := metaapi.NewSendMessageWhatsappBasic(openAiResponse, sender)
 
 	// Responder al usuario con la respuesta de OpenAI
-	err = service.sendMessageBasic(response, chatbot.PhoneNumberId, chatbot.TokenApiWhatsapp)
+	err := service.sendMessageBasic(response, chatbot.PhoneNumberId, chatbot.TokenApiWhatsapp)
 	if err != nil {
 		return fmt.Errorf("error sending OpenAI response to user: %v", err)
 	}
@@ -231,36 +184,8 @@ func (service *WhatsappService) handleNewSessionForChatbotOptionsMenuFalse(phone
 	service.createOrUpdateSession(phoneNumberID, currentTime, menuMap)
 
 	// Buscar el Resume relacionado al chatbot
-	resume, err := service.resumesService.GetResumeByChatbotID(chatbot.ID)
-	if err != nil {
-		return fmt.Errorf("error retrieving resume for chatbot ID %d: %v", chatbot.ID, err)
-	}
 
 	// Crear el mensaje para OpenAI
-	requestUserAndPrompt := "Consulta del usuario: " + text + ".\n" + resume.RequestToResolve
-
-	var openAiResponse string
-	if chatbot.GptUse == "CHATGPT" {
-		// Enviar el prompt a OpenAI junto con el Resume y la consulta del usuario
-		openAiResponse, err = service.openAIService.SendMessageBasicToOpenAI(requestUserAndPrompt, promps.Descripcion)
-		if err != nil {
-			return fmt.Errorf("error retrieving response from OpenAI: %v", err)
-		}
-	} else {
-		// Enviar el prompt a OpenAI junto con el Resume y la consulta del usuario
-		openAiResponse, err = service.ollamaService.SendMessageToChat(requestUserAndPrompt, promps.Descripcion)
-		if err != nil {
-			return fmt.Errorf("error retrieving response from OpenAI: %v", err)
-		}
-	}
-
-	response := metaapi.NewSendMessageWhatsappBasic(openAiResponse, sender)
-
-	// Responder al usuario con la respuesta de OpenAI
-	err = service.sendMessageBasic(response, chatbot.PhoneNumberId, chatbot.TokenApiWhatsapp)
-	if err != nil {
-		return fmt.Errorf("error sending OpenAI response to user: %v", err)
-	}
 
 	return nil
 }
@@ -299,40 +224,19 @@ func isSessionExpired(session *whatsapp.UserSession, currentTime time.Time) bool
 
 // Manejar la creación de una nueva sesión y el envío del primer menú
 func (service *WhatsappService) handleNewSession(phoneNumberID, sender string, currentTime time.Time) error {
-	chatbot, err := service.chatbotService.GetChatbotByPhoneNumberID(phoneNumberID)
-	if err != nil {
-		return fmt.Errorf("error retrieving chatbot for phoneNumberID %s: %v", phoneNumberID, err)
-	}
 
 	// Obtener y enviar el menú inicial
-	firstMenu, menuMap := service.getAndSendInitialMenu(&chatbot, phoneNumberID, sender)
-	if firstMenu == "" {
-		return fmt.Errorf("error retrieving initial menu for phoneNumberID %s", phoneNumberID)
-	}
 
 	// Crear o actualizar la sesión
-	service.createOrUpdateSession(phoneNumberID, currentTime, menuMap)
+
 	return nil
 }
 
 // Obtener y enviar el menú inicial
 func (service *WhatsappService) getAndSendInitialMenu(chatbot *dtos.ChatbotsDto, phoneNumberID, sender string) (string, map[int]int) {
-	filterOpcionesPreguntas := filters.OpcionPreguntasFiltro{
-		OpcionPreguntaID: 0,
-		ChatbotsID:       chatbot.ID,
-		PrimerMenu:       true,
-	}
-	firstMenu, menuMap := service.opcionesPreguntasService.GenerarMenuInicial(filterOpcionesPreguntas)
 
 	// Enviar el menú inicial
-	message := metaapi.NewSendMessageWhatsappBasic(firstMenu, sender)
-	fmt.Println(firstMenu)
-	err := service.sendMessageBasic(message, phoneNumberID, chatbot.TokenApiWhatsapp)
-	if err != nil {
-		fmt.Printf("\nERROR SENDING MESSAGE: %v \n", err)
-	}
-
-	return firstMenu, menuMap
+	return "", nil
 }
 
 // Crear o actualizar la sesión
@@ -348,21 +252,6 @@ func (service *WhatsappService) createOrUpdateSession(phoneNumberID string, curr
 
 // Procesar el mensaje cuando ya existe una sesión
 func (service *WhatsappService) processSessionMessage(session *whatsapp.UserSession, sender, text, phoneNumberID string, currentTime time.Time) error {
-	chatbot, err := service.chatbotService.GetChatbotByPhoneNumberID(phoneNumberID)
-	if err != nil {
-		return fmt.Errorf("error retrieving chatbot for phoneNumberID %s: %v", phoneNumberID, err)
-	}
-
-	userSelection, err := parseUserSelection(text)
-	if err != nil {
-		// Si la selección del usuario es inválida, dejamos que OpenAI determine la mejor respuesta
-		return service.handleWithOpenAI(session, text, &chatbot, sender, phoneNumberID, currentTime)
-	}
-
-	// Si el usuario selecciona una opción válida, manejamos esa opción
-	if session.MenuOpciones != nil {
-		return service.handleUserSelection(session, userSelection, &chatbot, sender, phoneNumberID, currentTime)
-	}
 
 	return nil
 }
@@ -385,24 +274,10 @@ func (service *WhatsappService) handleUserSelection(session *whatsapp.UserSessio
 		return service.handleInvalidUserSelection(chatbot, phoneNumberID, sender, currentTime)
 	}
 
-	opciones, err := service.getOptionsForSelectedOption(selectedOptionID, chatbot)
-	if err != nil {
-		return fmt.Errorf("error retrieving options for selected option %d: %v", selectedOptionID, err)
-	}
-
-	// Enviar las opciones disponibles al usuario o manejar el final de la conversación
-	if len(opciones) > 0 {
-		return service.sendOptionsToUser(session, opciones, chatbot, sender, phoneNumberID)
-	}
-
 	// Si no hay más opciones, obtener y enviar el contenido real de la opción seleccionada
-	_, err = service.opcionesPreguntasService.GetRealContentForOption(uint64(selectedOptionID))
-	if err != nil {
-		return fmt.Errorf("error retrieving real content for option %d: %v", selectedOptionID, err)
-	}
 
 	// Enviar el contenido real al usuario
-	err = service.sendRealContentToUser(session, uint64(selectedOptionID), chatbot, sender, phoneNumberID)
+	err := service.sendRealContentToUser(session, uint64(selectedOptionID), chatbot, sender, phoneNumberID)
 	if err != nil {
 		return fmt.Errorf("error sending real content to user: %v", err)
 	}
@@ -414,33 +289,14 @@ func (service *WhatsappService) handleUserSelection(session *whatsapp.UserSessio
 
 func (service *WhatsappService) sendRealContentToUser(session *whatsapp.UserSession, optionID uint64, chatbot *dtos.ChatbotsDto, sender, phoneNumberID string) error {
 	// Obtener el contenido real para la opción seleccionada
-	realContent, err := service.opcionesPreguntasService.GetRealContentForOption(optionID)
-	if err != nil {
-		return fmt.Errorf("error retrieving real content for option ID %d: %v", optionID, err)
-	}
 
 	// Construir y enviar el mensaje con el contenido real al usuario
-	message := metaapi.NewSendMessageWhatsappBasic(realContent, sender)
-	fmt.Println(realContent)
-	err = service.sendMessageBasic(message, phoneNumberID, chatbot.TokenApiWhatsapp)
-	if err != nil {
-		return fmt.Errorf("error sending real content to user: %v", err)
-	}
 
 	// Marcar la sesión como completada y limpiar
 	session.EsUltimaOpcion = true
 	delete(service.userSessions, phoneNumberID) // Limpiar la sesión después de enviar el contenido final
 
 	return nil
-}
-
-// Obtener las opciones relacionadas a la opción seleccionada
-func (service *WhatsappService) getOptionsForSelectedOption(optionID int, chatbot *dtos.ChatbotsDto) ([]dtos.OpcionPreguntasDto, error) {
-	filterOpcionesPreguntas := filters.OpcionPreguntasFiltro{
-		OpcionPreguntaID: int64(optionID),
-		ChatbotsID:       chatbot.ID,
-	}
-	return service.opcionesPreguntasService.ListByIDOpcionPreguntaService(filterOpcionesPreguntas)
 }
 
 // Enviar las opciones disponibles al usuario
@@ -471,15 +327,8 @@ func (service *WhatsappService) sendOptionsToUser(session *whatsapp.UserSession,
 
 // Verifica si una opción es la última opción
 func (service *WhatsappService) isLastOption(optionID int64, chatbotID int64) bool {
-	filterOpcionesPreguntas := filters.OpcionPreguntasFiltro{
-		OpcionPreguntaID: optionID,
-		ChatbotsID:       chatbotID,
-	}
-	opcionPuedeSerUltima, err := service.opcionesPreguntasService.ListByIDOpcionPreguntaService(filterOpcionesPreguntas)
-	if err != nil || len(opcionPuedeSerUltima) == 0 {
-		return false
-	}
-	return len(opcionPuedeSerUltima[0].ChildOpcionPreguntas) == 0
+
+	return false
 }
 
 // Nueva función que maneja la lógica de respuesta utilizando OpenAI
@@ -514,17 +363,6 @@ func (service *WhatsappService) handleWithOpenAI(session *whatsapp.UserSession, 
 func (service *WhatsappService) buildOptionsPromptFromDB(session *whatsapp.UserSession) (string, error) {
 	var optionsText string
 
-	for optionNumber, optionID := range session.MenuOpciones {
-		// Consultar el nombre de la opción en la base de datos
-		opcion, err := service.opcionesPreguntasService.GetById(uint64(optionID))
-		if err != nil {
-			return "", fmt.Errorf("error retrieving option %d from DB: %v", optionID, err)
-		}
-
-		// Agregar la opción al texto del prompt
-		optionsText += fmt.Sprintf("%d. %s\n", optionNumber, opcion.Nombre)
-	}
-
 	return optionsText, nil
 }
 
@@ -543,12 +381,6 @@ func (service *WhatsappService) SendTypingIndicator(responseComplet whatsapp.Res
 		phoneNumberID = responseComplet.Entry[0].Changes[0].Value.Metadata.PhoneNumberID
 	} else {
 		return nil
-	}
-
-	// Obtener el chatbot relacionado
-	chatbot, err := service.chatbotService.GetChatbotByPhoneNumberID(phoneNumberID)
-	if err != nil {
-		return fmt.Errorf("error retrieving chatbot for phoneNumberID %s: %v", phoneNumberID, err)
 	}
 
 	if len(sender) >= 3 {
@@ -582,7 +414,7 @@ func (service *WhatsappService) SendTypingIndicator(responseComplet whatsapp.Res
 	if err != nil {
 		return fmt.Errorf("error creating request: %v", err)
 	}
-	req.Header.Set("Authorization", "Bearer "+chatbot.TokenApiWhatsapp)
+	req.Header.Set("Authorization", "Bearer "+config.OPENAI_API_KEY)
 	req.Header.Set("Content-Type", "application/json")
 
 	// Cliente HTTP

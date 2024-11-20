@@ -60,19 +60,12 @@ func (controller *AssistantController) AddAssistant(c *fiber.Ctx) error {
 	}
 
 	// Validar que el archivo tenga extensión .jsonl o .txt
-	if filepath.Ext(fileHeader.Filename) != ".txt" && filepath.Ext(fileHeader.Filename) != ".jsonl" {
+	if filepath.Ext(fileHeader.Filename) != ".txt" && filepath.Ext(fileHeader.Filename) != ".pdf" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "File must be in .jsonl or .txt format"})
 	}
 
-	// Abrir el archivo para obtener su contenido
-	fileContent, err := fileHeader.Open()
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Unable to open file"})
-	}
-	defer fileContent.Close()
-
-	// Llamar al servicio AssistantService para crear el asistente, pasando fileContent y fileHeader
-	newAssistant, err := controller.service.CreateAssistantWithFile(assistantDto, fileContent, fileHeader.Filename)
+	// Llamar al servicio AssistantService para crear el asistente, pasando el fileHeader
+	newAssistant, err := controller.service.CreateAssistantWithFile(assistantDto, fileHeader)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error creating assistant. " + err.Error()})
 	}

@@ -6,7 +6,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func Setup(app *fiber.App, middleware *middlewares.MiddlewareManager, AuthController *controllers.AuthController, FileController *controllers.FileController, AssistantController *controllers.AssistantController, BussinessController *controllers.BussinessController, UsersController *controllers.UsersController, ChatbotsController *controllers.ChatbotsController, MetaAppsController *controllers.MetaAppsController, PrompsController *controllers.PrompsController, LogsController *controllers.LogsController, Password_resetsController *controllers.Password_resetsController, RolesController *controllers.RolesController, PermissionsController *controllers.PermissionsController, OpcionesPreguntasController *controllers.OpcionesPreguntasController, WhatsappController *controllers.WhatsappController, ResumesController *controllers.ResumesController) {
+func Setup(app *fiber.App, middleware *middlewares.MiddlewareManager, AuthController *controllers.AuthController, FileController *controllers.FileController, AssistantController *controllers.AssistantController, BussinessController *controllers.BussinessController, UsersController *controllers.UsersController, PrompsController *controllers.PrompsController, LogsController *controllers.LogsController, Password_resetsController *controllers.Password_resetsController, RolesController *controllers.RolesController, PermissionsController *controllers.PermissionsController, WhatsappController *controllers.WhatsappController) {
 
 	app.Get("/", middleware.ValidarApikey(), func(c *fiber.Ctx) error {
 		return c.Send([]byte("Api chatbot whatsapp by SHOMI SA ®️ "))

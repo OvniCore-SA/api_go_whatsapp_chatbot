@@ -28,7 +28,7 @@ const baseURL = "https://api.openai.com/v1"
 // Helper para realizar peticiones
 func (s *OpenAIAssistantService) doRequest(req *http.Request) (*http.Response, error) {
 	req.Header.Add("Authorization", "Bearer "+s.apiKey)
-	req.Header.Add("OpenAI-Beta", "assistants=v1")
+	req.Header.Add("OpenAI-Beta", "assistants=v2")
 	req.Header.Add("Content-Type", "application/json")
 
 	resp, err := s.client.Do(req)
@@ -44,12 +44,18 @@ func (s *OpenAIAssistantService) doRequest(req *http.Request) (*http.Response, e
 }
 
 // CreateAssistant crea un nuevo asistente con búsqueda de archivos activada
-func (s *OpenAIAssistantService) CreateAssistant(name, instructions, model string) (string, error) {
+func (s *OpenAIAssistantService) CreateAssistant(name, instructions, model, vectorStoreID string) (string, error) {
 	data := map[string]interface{}{
-		"name":         name,
 		"instructions": instructions,
-		"tools":        []map[string]string{{"type": "retrieval"}},
-		"model":        model,
+		"tools": []map[string]string{
+			{"type": "file_search"},
+		},
+		"tool_resources": map[string]interface{}{
+			"file_search": map[string]interface{}{
+				"vector_store_ids": []string{vectorStoreID},
+			},
+		},
+		"model": model,
 	}
 
 	body, _ := json.Marshal(data)
@@ -170,7 +176,7 @@ func (s *OpenAIAssistantService) UploadFileToGPT(fileContent io.Reader, filename
 	}
 
 	// Añadir el propósito requerido por OpenAI
-	writer.WriteField("purpose", "fine-tune")
+	writer.WriteField("purpose", "assistants")
 	writer.Close()
 
 	// Crear la solicitud HTTP

@@ -49,15 +49,6 @@ func main() {
 	UsersRepository := mysql_client.NewUsersRepository(db)
 	UsersService := services.NewUsersService(UsersRepository)
 	UsersController := controllers.NewUsersController(UsersService)
-	ChatbotsRepository := mysql_client.NewChatbotsRepository(db)
-	ChatbotsService := services.NewChatbotsService(ChatbotsRepository)
-	ChatbotsController := controllers.NewChatbotsController(ChatbotsService)
-	ResumesRepository := mysql_client.NewResumesRepository(db)
-	ResumesService := services.NewResumesService(ResumesRepository)
-	ResumesController := controllers.NewResumesController(ResumesService)
-	MetaAppsRepository := mysql_client.NewMetaAppsRepository(db)
-	MetaAppsService := services.NewMetaAppsService(MetaAppsRepository)
-	MetaAppsController := controllers.NewMetaAppsController(MetaAppsService)
 	PrompsRepository := mysql_client.NewPrompsRepository(db)
 	PrompsService := services.NewPrompsService(PrompsRepository)
 	PrompsController := controllers.NewPrompsController(PrompsService)
@@ -73,15 +64,12 @@ func main() {
 	PermissionsRepository := mysql_client.NewPermissionsRepository(db)
 	PermissionsService := services.NewPermissionsService(PermissionsRepository)
 	PermissionsController := controllers.NewPermissionsController(PermissionsService)
-	OpcionesPreguntasRepository := mysql_client.NewOpcionesPreguntasRepository(db)
-	OpcionesPreguntasService := services.NewOpcionesPreguntasService(OpcionesPreguntasRepository, ChatbotsService, PrompsService, MetaAppsService, OpenAIService, UtilService)
-	OpcionesPreguntasController := controllers.NewOpcionesPreguntasController(OpcionesPreguntasService)
 
 	// AUTH
 	AuthService := services.NewAuthService(UsersService, Password_resetsRepository)
 	AuthController := controllers.NewAuthController(AuthService)
 
-	WhatsappService := services.NewWhatsappService(UsersService, PrompsService, LogsService, OpcionesPreguntasService, MetaAppsService, ChatbotsService, OpenAIService, UtilService, ResumesService, OllamaService)
+	WhatsappService := services.NewWhatsappService(UsersService, PrompsService, LogsService, OpenAIService, UtilService, OllamaService)
 	WhatsappController := controllers.NewWhatsappController(WhatsappService)
 
 	BussinessRepository := mysql_client.NewBussinessRepository(db)
@@ -107,7 +95,7 @@ func main() {
 	}))
 
 	// Configuración de rutas
-	routes.Setup(app, &meddlewares, AuthController, FileController, AssistantController, BussinessController, UsersController, ChatbotsController, MetaAppsController, PrompsController, LogsController, Password_resetsController, RolesController, PermissionsController, OpcionesPreguntasController, WhatsappController, ResumesController)
+	routes.Setup(app, &meddlewares, AuthController, FileController, AssistantController, BussinessController, UsersController, PrompsController, LogsController, Password_resetsController, RolesController, PermissionsController, WhatsappController)
 
 	log.Fatal(app.Listen(":" + config.APP_PORT))
 }
