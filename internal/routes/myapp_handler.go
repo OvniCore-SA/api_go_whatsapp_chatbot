@@ -22,7 +22,7 @@ func Setup(app *fiber.App,
 	NumberPhonesController *controllers.NumberPhonesController) {
 
 	app.Get("/", middleware.ValidarApikey(), func(c *fiber.Ctx) error {
-		return c.Send([]byte("Api chatbot whatsapp by SHOMI SA ®️ "))
+		return c.Send([]byte("Api chatbot whatsapp by OVNICORE  ®️ "))
 	})
 	// ROUTE GENERAL ("url_base/api")
 	api := app.Group("/api")
