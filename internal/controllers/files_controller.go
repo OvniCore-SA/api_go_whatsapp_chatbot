@@ -31,7 +31,7 @@ func (controller *FileController) CreateFile(c *fiber.Ctx) error {
 	}
 
 	// Llamar a CreateFile en el servicio, pasando fileHeader, assistantsID y purpose
-	newFile, err := controller.service.CreateFile(fileHeader, assistantsID, purpose, "")
+	newFile, err := controller.service.CreateFile(fileHeader, assistantsID, purpose, "", "")
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Error creating file"})
 	}

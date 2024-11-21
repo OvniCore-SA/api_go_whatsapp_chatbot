@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/config"
+	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/repositories/mysql_client"
 	"github.com/minio/minio-go/v7"
@@ -22,7 +23,7 @@ func NewFileService(repository *mysql_client.FileRepository, minioClient *minio.
 	return &FileService{repository: repository, minioClient: minioClient}
 }
 
-func (s *FileService) CreateFile(fileHeader *multipart.FileHeader, assistantsID int64, purpose string, fileIDOpenAI string) (entities.File, error) {
+func (s *FileService) CreateFile(fileHeader *multipart.FileHeader, assistantsID int64, purpose, fileIDOpenAI, vectorStoreID string) (entities.File, error) {
 	// Abrir el archivo para obtener su contenido
 	file, err := fileHeader.Open()
 	if err != nil {
@@ -43,12 +44,13 @@ func (s *FileService) CreateFile(fileHeader *multipart.FileHeader, assistantsID 
 
 	// Crear el registro en la base de datos
 	fileRecord := entities.File{
-		AssistantsID:  assistantsID,
-		Filename:      filePath,
-		OpenaiFilesID: fileIDOpenAI,
-		Purpose:       purpose,
-		CreatedAt:     time.Now(),
-		UpdatedAt:     time.Now(),
+		AssistantsID:         assistantsID,
+		Filename:             filePath,
+		OpenaiFilesID:        fileIDOpenAI,
+		OpenaiVectorStoreIDs: vectorStoreID,
+		Purpose:              purpose,
+		CreatedAt:            time.Now(),
+		UpdatedAt:            time.Now(),
 	}
 
 	if err := s.repository.Create(fileRecord); err != nil {
@@ -64,6 +66,22 @@ func (s *FileService) GetAllFiles() ([]entities.File, error) {
 
 func (s *FileService) GetFileById(id int64) (entities.File, error) {
 	return s.repository.FindById(id)
+}
+
+func (s *FileService) GetFileByAssistantID(assistantID int64) ([]dtos.FileDto, error) {
+
+	files, err := s.repository.FindByAssistantID(assistantID)
+	if err != nil {
+		return nil, errors.New("files not found")
+	}
+
+	var fileDTOs []dtos.FileDto
+	for _, fileEntitie := range files {
+		fileDTO := entities.MapEntityToFileDto(fileEntitie)
+		fileDTOs = append(fileDTOs, fileDTO)
+	}
+
+	return fileDTOs, nil
 }
 
 func (s *FileService) UpdateFile(id, assistantsID int64, purpose string) (entities.File, error) {
@@ -117,5 +135,5 @@ func uploadToMinIO(client *minio.Client, file multipart.File, fileName string, f
 }
 
 func deleteFromMinIO(client *minio.Client, filename string) error {
-	return client.RemoveObject(context.Background(), "bucket-name", filename, minio.RemoveObjectOptions{})
+	return client.RemoveObject(context.Background(), config.MINIO_BUCKET_NAME, filename, minio.RemoveObjectOptions{})
 }

@@ -29,6 +29,12 @@ func (r *FileRepository) FindById(id int64) (entities.File, error) {
 	return file, err
 }
 
+func (r *FileRepository) FindByAssistantID(id int64) ([]entities.File, error) {
+	var file []entities.File
+	err := r.db.Where("assistants_id = ?", id).Find(&file).Error
+	return file, err
+}
+
 func (r *FileRepository) Update(file entities.File) error {
 	return r.db.Save(&file).Error
 }

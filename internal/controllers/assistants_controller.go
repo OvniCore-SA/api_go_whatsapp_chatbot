@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"path/filepath"
 	"strconv"
 
@@ -26,7 +27,7 @@ func (controller *AssistantController) UploadFileToGPT(c *fiber.Ctx) error {
 	}
 
 	// Validar que el archivo tenga extensión .jsonl
-	if filepath.Ext(file.Filename) != ".jsonl" {
+	if filepath.Ext(file.Filename) != ".txt" || filepath.Ext(file.Filename) != ".pdf" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "File must be in .jsonl format"})
 	}
 
@@ -73,6 +74,39 @@ func (controller *AssistantController) AddAssistant(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{"message": "Assistant created successfully", "data": newAssistant})
 }
 
+// Actualizar un asistente
+func (controller *AssistantController) UpdateAssistant(c *fiber.Ctx) error {
+	id, err := strconv.Atoi(c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid ID"})
+	}
+
+	var assistantDto dtos.AssistantDto
+	if err := c.BodyParser(&assistantDto); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request"})
+	}
+
+	var updatedAssistant dtos.AssistantDto
+	// Intentar obtener el archivo de la solicitud (opcional)
+	fileContent, err := c.FormFile("file")
+	if err == nil {
+		// Manejo del archivo si está presente
+		updatedAssistant, err = controller.service.UpdateAssistantWithFile(int64(id), assistantDto, fileContent)
+		if err != nil {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": err.Error()})
+		}
+	} else {
+
+		fmt.Println("No file uploaded, proceeding without file.")
+		updatedAssistant, err = controller.service.UpdateAssistant(int64(id), assistantDto)
+		if err != nil {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": err.Error()})
+		}
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{"message": "Assistant updated successfully", "data": updatedAssistant, "status": true})
+}
+
 // Obtener todos los asistentes
 func (controller *AssistantController) GetAllAssistants(c *fiber.Ctx) error {
 	assistants, err := controller.service.FindAllAssistants()
@@ -94,26 +128,6 @@ func (controller *AssistantController) GetAssistant(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Assistant not found"})
 	}
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": true, "message": "Assistente obtenido con éxito.", "data": assistant})
-}
-
-// Actualizar un asistente
-func (controller *AssistantController) UpdateAssistant(c *fiber.Ctx) error {
-	id, err := strconv.Atoi(c.Params("id"))
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid ID"})
-	}
-
-	var assistantDto dtos.AssistantDto
-	if err := c.BodyParser(&assistantDto); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request"})
-	}
-
-	updatedAssistant, err := controller.service.UpdateAssistant(int64(id), assistantDto)
-	if err != nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Assistant not found"})
-	}
-
-	return c.Status(fiber.StatusOK).JSON(fiber.Map{"message": "Assistant updated successfully", "data": updatedAssistant, "status": true})
 }
 
 // Eliminar un asistente de open ai y de la base de datos(soft delete)

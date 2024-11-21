@@ -131,7 +131,7 @@ func (m *AssistantService) CreateAssistantWithFile(data dtos.AssistantDto, fileH
 	}
 
 	// Subir a MinIO y registrar en DB
-	_, err = m.serviceFile.CreateFile(fileHeader, assistantDB.ID, "assistants", fileIDOpenAI)
+	_, err = m.serviceFile.CreateFile(fileHeader, assistantDB.ID, "assistants", fileIDOpenAI, vectorStoreID)
 	if err != nil {
 		return dtos.AssistantDto{}, err
 	}
@@ -200,6 +200,67 @@ func (s *AssistantService) UpdateAssistant(id int64, data dtos.AssistantDto) (dt
 	return entities.MapAssistantToDto(assistant), nil
 }
 
+func (s *AssistantService) UpdateAssistantWithFile(id int64, data dtos.AssistantDto, fileHeader *multipart.FileHeader) (dtos.AssistantDto, error) {
+	// Busco los files asociados a este assistente, por ahora solo debe tener uno. La relacion es para tener un respaldo de los otros solamente y porque un assistente puede tener muchos archivos en GPT pero no lo usamos así.
+
+	files, err := s.serviceFile.GetFileByAssistantID(id)
+	if err != nil {
+		return dtos.AssistantDto{}, errors.New("failed to find files with assistantID")
+	}
+
+	if len(files) > 1 || len(files) == 0 {
+		return dtos.AssistantDto{}, errors.New("failed to find files with assistantID. >1 <0")
+	}
+
+	// Desvinculo el archivo con el vector store OpenAI. Con esto se logra que el archivo quede vivo por si se quiere usar en otra ocación
+	err = s.openAIAssistantService.DeleteFileFromVectorStore(files[0].OpenaiVectorStoreIDs, files[0].OpenaiFilesID)
+	if err != nil {
+		return dtos.AssistantDto{}, err
+	}
+
+	// Abrir el archivo
+	fileContent, err := fileHeader.Open()
+	if err != nil {
+		return dtos.AssistantDto{}, fmt.Errorf("unable to open file: %w", err)
+	}
+	defer fileContent.Close()
+
+	// Subir archivo a OpenAI
+	fileIDOpenAI, err := s.openAIAssistantService.UploadFileToGPT(fileContent, fileHeader.Filename)
+	if err != nil {
+		return dtos.AssistantDto{}, err
+	}
+
+	// Asignar archivo al vector store
+	err = s.openAIAssistantService.addFileToVectorStore(files[0].OpenaiVectorStoreIDs, fileIDOpenAI)
+	if err != nil {
+		err = s.openAIAssistantService.DeleteFile(files[0].OpenaiFilesID)
+		if err != nil {
+			return dtos.AssistantDto{}, err
+		}
+		fmt.Println("FILE '%s' eliminado.", fileIDOpenAI)
+		return dtos.AssistantDto{}, errors.New("failed to assign file to vector store")
+	}
+
+	// Subir a MinIO y registrar en DB
+	_, err = s.serviceFile.CreateFile(fileHeader, id, "assistants", fileIDOpenAI, files[0].OpenaiVectorStoreIDs)
+	if err != nil {
+		return dtos.AssistantDto{}, err
+	}
+
+	// Luego de hacer todas las operaciones anteriores con respecto al file y de haber creado y asociado el nuevo, procedo a eliminar de la DB
+	err = s.serviceFile.DeleteFile(files[0].ID)
+	if err != nil {
+		return dtos.AssistantDto{}, err
+	}
+
+	assistant := entities.MapDtoToAssistant(data)
+	if err := s.repository.Update(id, assistant); err != nil {
+		return dtos.AssistantDto{}, errors.New("assistant not found")
+	}
+	return entities.MapAssistantToDto(assistant), nil
+}
+
 func (s *AssistantService) DeleteAssistant(id int64) error {
 	assistant, err := s.FindAssistantById(int64(id))
 	if err != nil {
@@ -210,6 +271,13 @@ func (s *AssistantService) DeleteAssistant(id int64) error {
 	if err != nil {
 		return fmt.Errorf("failed to delete assistant from OpenAI: %w", err)
 	}
+
+	// Si se elimina correctamente de la base de datos paso a eliminar el assistant en OPENAI
+	err = s.openAIAssistantService.DeleteAssistant(assistant.OpenaiAssistantsID)
+	if err != nil {
+		fmt.Println("failed to delete assistant from OpenAI: %w", err)
+	}
+
 	return s.repository.Delete(id)
 }
 

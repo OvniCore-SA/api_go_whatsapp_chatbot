@@ -80,36 +80,30 @@ func (s *OpenAIAssistantService) CreateAssistant(name, instructions, model, vect
 	return result.ID, nil
 }
 
-// AddFileToAssistant asocia un archivo existente a un asistente
-func (s *OpenAIAssistantService) AddFileToAssistant(assistantID, fileID string) error {
-	// Prepara el cuerpo de la solicitud con el file_id
-	data := map[string]string{
-		"file_id": fileID,
-	}
-
-	body, _ := json.Marshal(data)
-	url := fmt.Sprintf("%s/assistants/%s/files", baseURL, assistantID)
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
+// DeleteAssistant elimina un asistente específico de OpenAI por su ID
+func (s *OpenAIAssistantService) DeleteAssistant(assistantID string) error {
+	// Crear la solicitud DELETE con la URL del asistente
+	url := fmt.Sprintf("%s/assistants/%s", baseURL, assistantID)
+	req, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
 		return err
 	}
 
-	// Añadir encabezados requeridos
-	req.Header.Set("Authorization", "Bearer "+s.apiKey)
-	req.Header.Set("OpenAI-Beta", "assistants=v1")
-	req.Header.Set("Content-Type", "application/json")
-
-	// Realiza la solicitud
-	resp, err := s.client.Do(req)
+	// Realizar la solicitud utilizando el helper doRequest
+	resp, err := s.doRequest(req)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
 
-	// Verifica el estado de la respuesta
-	if resp.StatusCode >= 400 {
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(bodyBytes))
+	// Leer la respuesta y verificar errores en el cuerpo si es necesario
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("error reading response body: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("failed to delete assistant, status: %d, response: %s", resp.StatusCode, string(body))
 	}
 
 	return nil
@@ -139,24 +133,6 @@ func (s *OpenAIAssistantService) CreateVectorStore(name string) (string, error) 
 	}
 
 	return result.ID, nil
-}
-
-// UploadFileToVectorStore sube archivos a un vector store existente
-func (s *OpenAIAssistantService) UploadFileToVectorStore(vectorStoreID string, fileContent io.Reader) error {
-
-	// Primero, subimos el archivo a OpenAI
-	fileID, err := s.UploadFileToGPT(fileContent, "")
-	if err != nil {
-		return err
-	}
-
-	// Luego, asociamos el archivo subido con el vector store
-	err = s.addFileToVectorStore(vectorStoreID, fileID)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (s *OpenAIAssistantService) UploadFileToGPT(fileContent io.Reader, filename string) (string, error) {
@@ -213,6 +189,64 @@ func (s *OpenAIAssistantService) UploadFileToGPT(fileContent io.Reader, filename
 	return result.ID, nil
 }
 
+// DeleteFile elimina un archivo específico de OpenAI por su ID
+func (s *OpenAIAssistantService) DeleteFile(fileID string) error {
+	// Crear la URL para la solicitud DELETE
+	url := fmt.Sprintf("%s/files/%s", baseURL, fileID)
+	req, err := http.NewRequest("DELETE", url, nil)
+	if err != nil {
+		return err
+	}
+
+	// Realizar la solicitud utilizando el helper doRequest
+	resp, err := s.doRequest(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	// Leer la respuesta y verificar errores en el cuerpo si es necesario
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("error reading response body: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("failed to delete file, status: %d, response: %s", resp.StatusCode, string(body))
+	}
+
+	return nil
+}
+
+// DeleteFileFromVectorStore elimina un archivo específico de un vector_store por su ID y el ID del archivo
+func (s *OpenAIAssistantService) DeleteFileFromVectorStore(vectorStoreID, fileID string) error {
+	// Crear la URL para la solicitud DELETE
+	url := fmt.Sprintf("%s/vector_stores/%s/files/%s", baseURL, vectorStoreID, fileID)
+	req, err := http.NewRequest("DELETE", url, nil)
+	if err != nil {
+		return err
+	}
+
+	// Realizar la solicitud utilizando el helper doRequest
+	resp, err := s.doRequest(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	// Leer la respuesta y verificar errores en el cuerpo si es necesario
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("error reading response body: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("failed to delete file from vector_store, status: %d, response: %s", resp.StatusCode, string(body))
+	}
+
+	return nil
+}
+
 // addFileToVectorStore asocia un archivo con un vector store
 func (s *OpenAIAssistantService) addFileToVectorStore(vectorStoreID, fileID string) error {
 	data := map[string]string{
@@ -221,24 +255,6 @@ func (s *OpenAIAssistantService) addFileToVectorStore(vectorStoreID, fileID stri
 
 	body, _ := json.Marshal(data)
 	req, err := http.NewRequest("POST", fmt.Sprintf("%s/vector_stores/%s/files", baseURL, vectorStoreID), bytes.NewBuffer(body))
-	if err != nil {
-		return err
-	}
-
-	_, err = s.doRequest(req)
-	return err
-}
-
-// AssociateAssistantWithVectorStore asocia un vector store con un asistente
-func (s *OpenAIAssistantService) AssociateAssistantWithVectorStore(assistantID, vectorStoreID string) error {
-	data := map[string]interface{}{
-		"tool_resources": map[string]interface{}{
-			"file_search": map[string][]string{"vector_store_ids": {vectorStoreID}},
-		},
-	}
-
-	body, _ := json.Marshal(data)
-	req, err := http.NewRequest("PATCH", fmt.Sprintf("%s/assistants/%s", baseURL, assistantID), bytes.NewBuffer(body))
 	if err != nil {
 		return err
 	}

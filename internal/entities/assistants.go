@@ -24,6 +24,10 @@ type Assistant struct {
 }
 
 func MapAssistantToDto(a Assistant) dtos.AssistantDto {
+	var bussiness dtos.BussinessDto
+	if a.Bussiness.ID != 0 {
+		bussiness = MapEntitiesToBussinessDto(a.Bussiness)
+	}
 	return dtos.AssistantDto{
 		ID:                 a.ID,
 		BussinessID:        a.BussinessID,
@@ -33,7 +37,7 @@ func MapAssistantToDto(a Assistant) dtos.AssistantDto {
 		Model:              a.Model,
 		Instructions:       a.Instructions,
 		Active:             a.Active,
-		Bussiness:          MapEntitiesToBussinessDto(a.Bussiness), // cargo el bussiness
+		Bussiness:          bussiness, // cargo el bussiness
 	}
 }
 
