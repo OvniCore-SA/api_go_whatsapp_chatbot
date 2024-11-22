@@ -262,3 +262,146 @@ func (s *OpenAIAssistantService) addFileToVectorStore(vectorStoreID, fileID stri
 	_, err = s.doRequest(req)
 	return err
 }
+
+// SendMessageToThread envía un mensaje a un Thread existente en OpenAI
+func (s *OpenAIAssistantService) SendMessageToThread(threadID, message string) error {
+	// Estructura del cuerpo de la solicitud
+	data := map[string]interface{}{
+		"role":    "user",
+		"content": message,
+	}
+
+	// Serializar el cuerpo de la solicitud
+	body, err := json.Marshal(data)
+	if err != nil {
+		return fmt.Errorf("error marshalling request body: %v", err)
+	}
+
+	// Crear la solicitud HTTP
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/threads/%s/messages", baseURL, threadID), bytes.NewBuffer(body))
+	if err != nil {
+		return fmt.Errorf("error creating request: %v", err)
+	}
+
+	// Enviar la solicitud y procesar la respuesta
+	resp, err := s.doRequest(req)
+	if err != nil {
+		return fmt.Errorf("error sending request to OpenAI: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("failed to send message to thread, status code: %d", resp.StatusCode)
+	}
+
+	return nil
+}
+
+func (s *OpenAIAssistantService) CreateRunForThread(threadID, assistantID string) (string, error) {
+	// Estructura del cuerpo de la solicitud
+	data := map[string]interface{}{
+		"assistant_id": assistantID,
+	}
+
+	// Serializar el cuerpo de la solicitud
+	body, err := json.Marshal(data)
+	if err != nil {
+		return "", fmt.Errorf("error marshalling request body: %v", err)
+	}
+
+	// Crear la solicitud HTTP
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/threads/%s/runs", baseURL, threadID), bytes.NewBuffer(body))
+	if err != nil {
+		return "", fmt.Errorf("error creating request: %v", err)
+	}
+
+	// Enviar la solicitud y procesar la respuesta
+	resp, err := s.doRequest(req)
+	if err != nil {
+		return "", fmt.Errorf("error sending request to OpenAI: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// Decodificar la respuesta
+	var result struct {
+		ID string `json:"id"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("error decoding response: %v", err)
+	}
+
+	// Retornar el ID del run creado
+	return result.ID, nil
+}
+
+func (s *OpenAIAssistantService) GetMessagesFromThread(threadID string) (string, error) {
+	// Crear la solicitud HTTP
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/threads/%s/messages", baseURL, threadID), nil)
+	if err != nil {
+		return "", fmt.Errorf("error creating request: %v", err)
+	}
+
+	// Enviar la solicitud y procesar la respuesta
+	resp, err := s.doRequest(req)
+	if err != nil {
+		return "", fmt.Errorf("error sending request to OpenAI: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// Decodificar la respuesta
+	var result struct {
+		Data []struct {
+			Role    string `json:"role"`
+			Content []struct {
+				Type string `json:"type"`
+				Text struct {
+					Value string `json:"value"`
+				} `json:"text"`
+			} `json:"content"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("error decoding response: %v", err)
+	}
+
+	// Buscar el último mensaje del asistente
+	for i := len(result.Data) - 1; i >= 0; i-- {
+		if result.Data[i].Role == "assistant" {
+			for _, content := range result.Data[i].Content {
+				if content.Type == "text" {
+					return content.Text.Value, nil
+				}
+			}
+		}
+	}
+
+	return "", fmt.Errorf("no assistant response found in thread messages")
+}
+
+// CreateThread crea un nuevo Thread en OpenAI con un asistente específico
+func (s *OpenAIAssistantService) CreateThread(model, instructions string) (string, error) {
+	// Estructura del cuerpo de la solicitud
+
+	// Crear la solicitud HTTP
+	req, err := http.NewRequest("POST", baseURL+"/threads", nil)
+	if err != nil {
+		return "", fmt.Errorf("error creating request: %v", err)
+	}
+
+	// Enviar la solicitud y procesar la respuesta
+	resp, err := s.doRequest(req)
+	if err != nil {
+		return "", fmt.Errorf("error sending request to OpenAI: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// Decodificar la respuesta
+	var result struct {
+		ID string `json:"id"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("error decoding response: %v", err)
+	}
+
+	return result.ID, nil
+}

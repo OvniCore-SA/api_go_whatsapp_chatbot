@@ -13,8 +13,6 @@ import (
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 
-	"github.com/sashabaranov/go-openai"
-
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -37,14 +35,9 @@ func main() {
 	}
 
 	// Instancio api de OPEN AI
-	OpenAIClient := openai.NewClient(config.OPENAI_API_KEY)
 	OpenAIAssistantClient := services.NewOpenAIAssistantService(config.OPENAI_API_KEY)
 
-	OpenAIService := services.NewOpenAIService(OpenAIClient)
-	OllamaService := services.NewOllamaService()
-
 	// Inicialización de repositorios y servicios
-
 	UtilService := services.NewUtilService()
 	UsersRepository := mysql_client.NewUsersRepository(db)
 	UsersService := services.NewUsersService(UsersRepository)
@@ -64,29 +57,24 @@ func main() {
 	PermissionsRepository := mysql_client.NewPermissionsRepository(db)
 	PermissionsService := services.NewPermissionsService(PermissionsRepository)
 	PermissionsController := controllers.NewPermissionsController(PermissionsService)
-
-	// AUTH
-	AuthService := services.NewAuthService(UsersService, Password_resetsRepository)
-	AuthController := controllers.NewAuthController(AuthService)
-
-	WhatsappService := services.NewWhatsappService(UsersService, PrompsService, LogsService, OpenAIService, UtilService, OllamaService)
+	NumberPhonesRepository := mysql_client.NewNumberPhonesRepository(db)
+	NumberPhonesService := services.NewNumberPhonesService(NumberPhonesRepository)
+	NumberPhonesController := controllers.NewNumberPhonesController(NumberPhonesService)
+	WhatsappService := services.NewWhatsappService(UsersService, PrompsService, LogsService, OpenAIAssistantClient, UtilService, NumberPhonesService)
 	WhatsappController := controllers.NewWhatsappController(WhatsappService)
-
 	BussinessRepository := mysql_client.NewBussinessRepository(db)
 	BussinessService := services.NewBussinessService(BussinessRepository)
 	BussinessController := controllers.NewBussinessController(BussinessService)
-
 	FileRepository := mysql_client.NewFileRepository(db)
 	FileService := services.NewFileService(FileRepository, minioClient)
 	FileController := controllers.NewFileController(FileService)
-
 	AssistantRepository := mysql_client.NewAssistantRepository(db)
 	AssistantService := services.NewAssistantService(AssistantRepository, FileService, OpenAIAssistantClient)
 	AssistantController := controllers.NewAssistantController(AssistantService)
 
-	NumberPhonesRepository := mysql_client.NewNumberPhonesRepository(db)
-	NumberPhonesService := services.NewNumberPhonesService(NumberPhonesRepository)
-	NumberPhonesController := controllers.NewNumberPhonesController(NumberPhonesService)
+	// AUTH
+	AuthService := services.NewAuthService(UsersService, Password_resetsRepository)
+	AuthController := controllers.NewAuthController(AuthService)
 
 	meddlewares := middlewares.MiddlewareManager{}
 

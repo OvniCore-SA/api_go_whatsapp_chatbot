@@ -16,27 +16,28 @@ import (
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos/whatsapp"
 	metaapi "github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos/whatsapp/metaApi"
+	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities"
 )
 
 type WhatsappService struct {
-	usersService  *UsersService
-	prompsService *PrompsService
-	logsService   *LogsService
-	openAIService *OpenAIService
-	utilService   *UtilService
-	ollamaService *OllamaService
-	userSessions  map[string]*whatsapp.UserSession // Mapa para almacenar sesiones por PhoneNumberID
+	usersService           *UsersService
+	prompsService          *PrompsService
+	logsService            *LogsService
+	openAIAssistantService *OpenAIAssistantService
+	utilService            *UtilService
+	userSessions           map[string]*whatsapp.UserSession // Mapa para almacenar sesiones por PhoneNumberID
+	numberPhone            *NumberPhonesService
 }
 
-func NewWhatsappService(usersService *UsersService, prompsService *PrompsService, logsService *LogsService, openAIService *OpenAIService, utilService *UtilService, ollamaService *OllamaService) *WhatsappService {
+func NewWhatsappService(usersService *UsersService, prompsService *PrompsService, logsService *LogsService, openAIAssistantService *OpenAIAssistantService, utilService *UtilService, numberPhone *NumberPhonesService) *WhatsappService {
 	return &WhatsappService{
-		usersService:  usersService,
-		prompsService: prompsService,
-		logsService:   logsService,
-		openAIService: openAIService,
-		utilService:   utilService,
-		ollamaService: ollamaService,
-		userSessions:  make(map[string]*whatsapp.UserSession),
+		usersService:           usersService,
+		prompsService:          prompsService,
+		logsService:            logsService,
+		openAIAssistantService: openAIAssistantService,
+		utilService:            utilService,
+		userSessions:           make(map[string]*whatsapp.UserSession),
+		numberPhone:            numberPhone,
 	}
 }
 
@@ -58,14 +59,147 @@ func (service *WhatsappService) HandleIncomingMessage(response whatsapp.Response
 	return nil
 }
 
-func (service *WhatsappService) HandleMessageOllama(prompt string) string {
-	// Enviar el mensaje recibido a Ollama
-	ollamaResponse, err := service.ollamaService.SendMessageToChat(prompt, "Responde brevemente")
-	if err != nil {
-		fmt.Println("ERROR: " + err.Error())
-		return err.Error()
+func (service *WhatsappService) HandleIncomingMessageWithAssistant(response whatsapp.ResponseComplet) error {
+	for _, entry := range response.Entry {
+		for _, change := range entry.Changes {
+			for _, message := range change.Value.Messages {
+
+				fmt.Print(message.Text.Body)
+				// Extraer información básica
+				sender, text, _, _, phoneNumberID, err := extractMessageInfo(change.Value)
+				if err != nil {
+					log.Printf("Error extracting message info: %v", err)
+					return err
+				}
+
+				// Buscar el número de teléfono asociado
+				numberPhone, err := service.findNumberPhoneByPhoneID(phoneNumberID)
+				if err != nil {
+					log.Printf("Error finding NumberPhone: %v", err)
+					return err
+				}
+
+				// Buscar el contacto asociado
+				contact, err := service.findOrCreateContact(numberPhone, sender)
+				if err != nil {
+					log.Printf("Error finding or creating contact: %v", err)
+					return err
+				}
+
+				// Manejar el mensaje con OpenAI
+				err = service.handleMessageWithOpenAI(contact, text, numberPhone)
+				if err != nil {
+					log.Printf("Error handling message with OpenAI: %v", err)
+					return err
+				}
+			}
+		}
 	}
-	return ollamaResponse
+	return nil
+}
+
+func (service *WhatsappService) findNumberPhoneByPhoneID(phoneID string) (*entities.NumberPhone, error) {
+	// Busca en la base de datos el número de teléfono asociado al ID recibido
+	var numberPhone entities.NumberPhone
+	err := config.DB.Where("uuid = ?", phoneID).First(&numberPhone).Error
+	if err != nil {
+		return nil, fmt.Errorf("number phone not found: %v", err)
+	}
+	return &numberPhone, nil
+}
+
+func (service *WhatsappService) findOrCreateContact(numberPhone *entities.NumberPhone, sender string) (*entities.Contact, error) {
+	// Busca el contacto en la base de datos o crea uno nuevo
+	var contact entities.Contact
+	err := config.DB.Where("number_phones_id = ? AND number_phone = ?", numberPhone.ID, sender).First(&contact).Error
+	if err == nil {
+		return &contact, nil
+	}
+
+	senderInt64, err := strconv.Atoi(sender)
+	if err == nil {
+		return &contact, nil
+	}
+
+	// Crear un nuevo contacto si no existe
+	contact = entities.Contact{
+		NumberPhonesID: numberPhone.ID,
+		NumberPhone:    int64(senderInt64),
+	}
+	err = config.DB.Create(&contact).Error
+	if err != nil {
+		return nil, fmt.Errorf("error creating contact: %v", err)
+	}
+	return &contact, nil
+}
+
+func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contact, text string, numberPhone *entities.NumberPhone) error {
+	// Configurar el asistente
+	var assistant entities.Assistant
+	err := config.DB.Where("id = ?", numberPhone.AssistantsID).First(&assistant).Error
+	if err != nil {
+		return fmt.Errorf("assistant not found: %v", err)
+	}
+
+	// Crear o usar el Thread existente
+	threadID := contact.OpenaiThreadsID
+	if threadID == "" {
+		threadID, err = service.createNewThread(assistant)
+		if err != nil {
+			return fmt.Errorf("error creating new thread: %v", err)
+		}
+		contact.NumberPhonesID = numberPhone.ID
+		contact.OpenaiThreadsID = threadID
+		config.DB.Save(contact)
+	}
+
+	// Enviar el mensaje a OpenAI
+	response, err := service.InteractWithAssistant(threadID, assistant.OpenaiAssistantsID, text)
+	if err != nil {
+		return fmt.Errorf("error sending message to OpenAI: %v", err)
+	}
+
+	contactToString := strconv.Itoa(int(contact.NumberPhone))
+	// Enviar la respuesta al usuario
+	message := metaapi.NewSendMessageWhatsappBasic(response, contactToString)
+	err = service.sendMessageBasic(message, strconv.FormatInt(numberPhone.NumberPhone, 10), "config.WHATSAPP_API_TOKEN")
+	if err != nil {
+		return fmt.Errorf("error sending response to user: %v", err)
+	}
+
+	return nil
+}
+
+func (s *WhatsappService) InteractWithAssistant(threadID, assistantID, message string) (string, error) {
+	// Crear un run para el thread
+	runID, err := s.openAIAssistantService.CreateRunForThread(threadID, assistantID)
+	if err != nil {
+		return "", fmt.Errorf("error creating run: %v", err)
+	}
+	fmt.Printf("Run created: %s\n", runID)
+
+	// Enviar el mensaje al thread
+	err = s.openAIAssistantService.SendMessageToThread(threadID, message)
+	if err != nil {
+		return "", fmt.Errorf("error sending message: %v", err)
+	}
+
+	// Obtener los mensajes del thread y encontrar la respuesta del asistente
+	response, err := s.openAIAssistantService.GetMessagesFromThread(threadID)
+	if err != nil {
+		return "", fmt.Errorf("error getting messages from thread: %v", err)
+	}
+
+	return response, nil
+}
+
+func (service *WhatsappService) createNewThread(assistant entities.Assistant) (string, error) {
+	// Crear un nuevo Thread en OpenAI
+	threadID, err := service.openAIAssistantService.CreateThread(assistant.Model, assistant.Instructions)
+	if err != nil {
+		return "", fmt.Errorf("error creating thread: %v", err)
+	}
+	return threadID, nil
 }
 
 func (service *WhatsappService) sendMessageBasic(message metaapi.SendMessageBasic, phoneNumberId string, tokenApiWhatsapp string) error {
@@ -199,20 +333,20 @@ func extractMessageInfo(value whatsapp.Value) (sender, text, fechaMessage, messa
 	messageType = value.Messages[0].Type
 	phoneNumberID = value.Metadata.PhoneNumberID
 
-	// El timestamp en formato Unix
-	timestamp, _ := strconv.Atoi(value.Messages[0].Timestamp)
+	// // El timestamp en formato Unix
+	// timestamp, _ := strconv.Atoi(value.Messages[0].Timestamp)
 
-	// Convertir el timestamp a una fecha y hora legible en UTC
-	t := time.Unix(int64(timestamp), 0)
+	// // Convertir el timestamp a una fecha y hora legible en UTC
+	// t := time.Unix(int64(timestamp), 0)
 
-	fechaMessage = t.Format("2006-01-02 15:04:05")
+	// fechaMessage = t.Format("2006-01-02 15:04:05")
 
-	// Verificar si el tiempo del mensaje es posterior al tiempo actual + 5 minutos
-	currentTime := time.Now()
-	if t.Before(currentTime.Add(-5 * time.Minute)) {
-		err = fmt.Errorf("el timestamp del mensaje (%d) excede la fecha y hora actual menos 5 minutos", timestamp)
-		return sender, text, "", "", "", err
-	}
+	// // Verificar si el tiempo del mensaje es posterior al tiempo actual + 5 minutos
+	// currentTime := time.Now()
+	// if t.Before(currentTime.Add(-5 * time.Minute)) {
+	// 	err = fmt.Errorf("el timestamp del mensaje (%d) excede la fecha y hora actual menos 5 minutos", timestamp)
+	// 	return sender, text, "", "", phoneNumberID, err
+	// }
 
 	return sender, text, fechaMessage, messageType, phoneNumberID, nil
 }
@@ -329,34 +463,6 @@ func (service *WhatsappService) sendOptionsToUser(session *whatsapp.UserSession,
 func (service *WhatsappService) isLastOption(optionID int64, chatbotID int64) bool {
 
 	return false
-}
-
-// Nueva función que maneja la lógica de respuesta utilizando OpenAI
-func (service *WhatsappService) handleWithOpenAI(session *whatsapp.UserSession, userMessage string, chatbot *dtos.ChatbotsDto, sender, phoneNumberID string, currentTime time.Time) error {
-	// Construir el prompt para OpenAI basado en el mensaje del usuario y las opciones del menú actual desde la base de datos
-	optionsPrompt, err := service.buildOptionsPromptFromDB(session)
-	if err != nil {
-		return fmt.Errorf("error building options prompt from DB: %v", err)
-	}
-
-	userMessage += "\n\nNo saludes. No es un primer mensaje."
-	// Enviar el prompt a OpenAI y recibir la respuesta
-	openAIResponse, err := service.openAIService.SendMessageToOpenAI(userMessage, optionsPrompt)
-	if err != nil {
-		return fmt.Errorf("error generating response from OpenAI: %v", err)
-	}
-
-	// Enviar la respuesta de OpenAI al usuario
-	message := metaapi.NewSendMessageWhatsappBasic(openAIResponse, sender)
-	err = service.sendMessageBasic(message, phoneNumberID, chatbot.TokenApiWhatsapp)
-	if err != nil {
-		return fmt.Errorf("error sending OpenAI response to user: %v", err)
-	}
-
-	// Actualizar la sesión y el menú
-	service.updateSessionWithOpenAIResponse(session, currentTime)
-
-	return nil
 }
 
 // Construir el prompt para OpenAI basado en las opciones del menú obtenidas desde la base de datos

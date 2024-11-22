@@ -29,7 +29,7 @@ func (controller *WhatsappController) PostWhatsapp(c *fiber.Ctx) error {
 	go func() {
 
 		// Lógica principal delegada al servicio de WhatsApp
-		err := controller.service.HandleIncomingMessage(responseComplet)
+		err := controller.service.HandleIncomingMessageWithAssistant(responseComplet)
 		if err != nil {
 			fmt.Println("ERROR PROCESANDING THE MESSAGE")
 			fmt.Println(err.Error())
@@ -46,8 +46,7 @@ func (controller *WhatsappController) PostSendMessageWhatsapp(c *fiber.Ctx) erro
 
 	go func() {
 		// Lógica principal delegada al servicio de WhatsApp
-		response := controller.service.HandleMessageOllama("Hola")
-		fmt.Print(response)
+
 	}()
 
 	// Respuesta de éxito
