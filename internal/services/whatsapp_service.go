@@ -98,10 +98,10 @@ func (service *WhatsappService) HandleIncomingMessageWithAssistant(response what
 	return nil
 }
 
-func (service *WhatsappService) findNumberPhoneByPhoneID(phoneID string) (*entities.NumberPhone, error) {
+func (service *WhatsappService) findNumberPhoneByPhoneID(WhatsappNumberPhoneID string) (*entities.NumberPhone, error) {
 	// Busca en la base de datos el número de teléfono asociado al ID recibido
 	var numberPhone entities.NumberPhone
-	err := config.DB.Where("uuid = ?", phoneID).First(&numberPhone).Error
+	err := config.DB.Where("whatsapp_number_phone_id = ?", WhatsappNumberPhoneID).First(&numberPhone).Error
 	if err != nil {
 		return nil, fmt.Errorf("number phone not found: %v", err)
 	}
@@ -117,7 +117,7 @@ func (service *WhatsappService) findOrCreateContact(numberPhone *entities.Number
 	}
 
 	senderInt64, err := strconv.Atoi(sender)
-	if err == nil {
+	if err == nil && contact.ID > 0 {
 		return &contact, nil
 	}
 
@@ -162,7 +162,7 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 	contactToString := strconv.Itoa(int(contact.NumberPhone))
 	// Enviar la respuesta al usuario
 	message := metaapi.NewSendMessageWhatsappBasic(response, contactToString)
-	err = service.sendMessageBasic(message, strconv.FormatInt(numberPhone.NumberPhone, 10), "config.WHATSAPP_API_TOKEN")
+	err = service.sendMessageBasic(message, strconv.FormatInt(numberPhone.WhatsappNumberPhoneId, 10), numberPhone.TokenPermanent)
 	if err != nil {
 		return fmt.Errorf("error sending response to user: %v", err)
 	}
@@ -177,6 +177,12 @@ func (s *WhatsappService) InteractWithAssistant(threadID, assistantID, message s
 		return "", fmt.Errorf("error creating run: %v", err)
 	}
 	fmt.Printf("Run created: %s\n", runID)
+
+	// Esperar a que el run esté completado
+	err = s.openAIAssistantService.WaitForRunCompletion(threadID, runID, 10, 2*time.Second)
+	if err != nil {
+		return "", fmt.Errorf("error waiting for run completion: %v", err)
+	}
 
 	// Enviar el mensaje al thread
 	err = s.openAIAssistantService.SendMessageToThread(threadID, message)

@@ -7,6 +7,7 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"time"
 
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/config"
 )
@@ -332,6 +333,48 @@ func (s *OpenAIAssistantService) CreateRunForThread(threadID, assistantID string
 
 	// Retornar el ID del run creado
 	return result.ID, nil
+}
+
+func (s *OpenAIAssistantService) WaitForRunCompletion(threadID, runID string, maxRetries int, retryInterval time.Duration) error {
+	for i := 0; i < maxRetries; i++ {
+		// Crear la solicitud HTTP para consultar el estado del run
+		req, err := http.NewRequest("GET", fmt.Sprintf("%s/threads/%s/runs/%s", baseURL, threadID, runID), nil)
+		if err != nil {
+			return fmt.Errorf("error creating request: %v", err)
+		}
+
+		// Enviar la solicitud y procesar la respuesta
+		resp, err := s.doRequest(req)
+		if err != nil {
+			return fmt.Errorf("error sending request to OpenAI: %v", err)
+		}
+		defer resp.Body.Close()
+
+		// Decodificar la respuesta
+		var result struct {
+			Status string `json:"status"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+			return fmt.Errorf("error decoding response: %v", err)
+		}
+
+		// Verificar el estado del run
+		switch result.Status {
+		case "completed":
+			// Si está completado, retornar sin error
+			return nil
+		case "failed", "cancelled", "expired":
+			// Si el run falla o es cancelado, retornar error
+			return fmt.Errorf("run ended with status: %s", result.Status)
+		default:
+			// Si está en progreso o en cola, esperar y reintentar
+			fmt.Printf("Run status: %s, retrying...\n", result.Status)
+			time.Sleep(retryInterval)
+		}
+	}
+
+	// Si se agotan los reintentos, retornar error
+	return fmt.Errorf("run did not complete after %d retries", maxRetries)
 }
 
 func (s *OpenAIAssistantService) GetMessagesFromThread(threadID string) (string, error) {
