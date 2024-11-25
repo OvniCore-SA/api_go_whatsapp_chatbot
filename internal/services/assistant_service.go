@@ -8,8 +8,8 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"os"
 
-	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/config"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/repositories/mysql_client"
@@ -54,7 +54,7 @@ func (s *AssistantService) UploadFileToGPT(fileContent io.Reader, filename strin
 	if err != nil {
 		return "", err
 	}
-	req.Header.Set("Authorization", "Bearer "+config.OPENAI_API_KEY)
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENAI_API_KEY"))
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
 	// Realizar la solicitud
@@ -116,7 +116,7 @@ func (m *AssistantService) CreateAssistantWithFile(data dtos.AssistantDto, fileH
 	}
 
 	// Crear el asistente en OpenAI
-	assistantID, err := m.openAIAssistantService.CreateAssistant(data.Name, data.Instructions, config.OPENAI_MODEL_USE, vectorStoreID)
+	assistantID, err := m.openAIAssistantService.CreateAssistant(data.Name, data.Instructions, os.Getenv("OPENAI_MODEL_USE"), vectorStoreID)
 	if err != nil {
 		return dtos.AssistantDto{}, err
 	}
@@ -153,7 +153,7 @@ func (s *AssistantService) DeleteOpenAIAssistant(assistantID string) error {
 		return err
 	}
 
-	req.Header.Set("Authorization", "Bearer "+config.OPENAI_API_KEY)
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENAI_API_KEY"))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("OpenAI-Beta", "assistants=v2")
 
@@ -234,6 +234,7 @@ func (s *AssistantService) UpdateAssistantWithFile(id int64, data dtos.Assistant
 	// Asignar archivo al vector store
 	err = s.openAIAssistantService.addFileToVectorStore(files[0].OpenaiVectorStoreIDs, fileIDOpenAI)
 	if err != nil {
+		// Si falla la desvinculación, elimino el archivo de OpenAI directamente y con estó logramos que se desvincule también el archvo.
 		err = s.openAIAssistantService.DeleteFile(files[0].OpenaiFilesID)
 		if err != nil {
 			return dtos.AssistantDto{}, err
@@ -254,6 +255,7 @@ func (s *AssistantService) UpdateAssistantWithFile(id int64, data dtos.Assistant
 		return dtos.AssistantDto{}, err
 	}
 
+	// Actualizo los otros campos del assistente
 	assistant := entities.MapDtoToAssistant(data)
 	if err := s.repository.Update(id, assistant); err != nil {
 		return dtos.AssistantDto{}, errors.New("assistant not found")

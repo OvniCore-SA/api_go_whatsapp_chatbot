@@ -54,6 +54,10 @@ func (controller *AssistantController) AddAssistant(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request"})
 	}
 
+	if err := assistantDto.ValidateAssistantDto(true); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+
 	// Obtener el archivo de la solicitud
 	fileHeader, err := c.FormFile("file")
 	if err != nil {
@@ -84,6 +88,12 @@ func (controller *AssistantController) UpdateAssistant(c *fiber.Ctx) error {
 	var assistantDto dtos.AssistantDto
 	if err := c.BodyParser(&assistantDto); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request"})
+	}
+
+	// Valido los datos
+	assistantDto.ID = int64(id)
+	if err := assistantDto.ValidateAssistantDto(false); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
 	var updatedAssistant dtos.AssistantDto

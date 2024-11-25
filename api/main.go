@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"log"
+	"os"
 
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/api/middlewares"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/config"
@@ -14,9 +16,16 @@ import (
 	"github.com/minio/minio-go/v7/pkg/credentials"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	// Cargar las variables del archivo .env
+	err := godotenv.Load(".env")
+	if err != nil {
+		fmt.Println("Error cargando el archivo .env")
+		return
+	}
 	app := fiber.New()
 
 	// Configuración de la base de datos
@@ -26,8 +35,8 @@ func main() {
 	}
 
 	// Instanciar el cliente de MinIO
-	minioClient, err := minio.New(config.MINIO_ENDPOINT, &minio.Options{
-		Creds: credentials.NewStaticV4(config.MINIO_ACCESS_KEY, config.MINIO_SECRET_KEY, ""),
+	minioClient, err := minio.New(os.Getenv("MINIO_ENDPOINT"), &minio.Options{
+		Creds: credentials.NewStaticV4(os.Getenv("MINIO_ACCESS_KEY"), os.Getenv("MINIO_SECRET_KEY"), ""),
 		//Secure: config.MINIO_USE_SSL,
 	})
 	if err != nil {
@@ -35,7 +44,7 @@ func main() {
 	}
 
 	// Instancio api de OPEN AI
-	OpenAIAssistantClient := services.NewOpenAIAssistantService(config.OPENAI_API_KEY)
+	OpenAIAssistantClient := services.NewOpenAIAssistantService(os.Getenv("OPENAI_API_KEY"))
 
 	// Inicialización de repositorios y servicios
 	UtilService := services.NewUtilService()
@@ -89,5 +98,5 @@ func main() {
 	// Configuración de TODAS las rutas
 	routes.Setup(app, &meddlewares, AuthController, FileController, AssistantController, BussinessController, UsersController, PrompsController, LogsController, Password_resetsController, RolesController, PermissionsController, WhatsappController, NumberPhonesController)
 
-	log.Fatal(app.Listen(":" + config.APP_PORT))
+	log.Fatal(app.Listen(":" + os.Getenv("APP_PORT")))
 }

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/smtp"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos"
@@ -107,40 +108,122 @@ func (s *AuthService) RestorePassword(email string) error {
 
 // sendResetPasswordEmail envía un email de reseteo de contraseña
 func (s *AuthService) sendResetPasswordEmail(email, token, userName string) error {
-	// Plantilla de correo
+	// Verificar que las variables de entorno requeridas estén configuradas
+	hostView := os.Getenv("HOST_VIEW")
+	from := os.Getenv("USER_EMAIL")
+	pass := os.Getenv("PASSWORD_EMAIL")
+
+	if hostView == "" || from == "" || pass == "" {
+		return fmt.Errorf("variables de entorno HOST_VIEW, USER_EMAIL o PASSWORD_EMAIL no configuradas")
+	}
+
+	// Nueva plantilla de correo
 	htmlTemplate := fmt.Sprintf(`
 		<!DOCTYPE html>
 		<html lang="es">
 		<head>
-			<meta charset="UTF-8">
+			<meta charset="UTF-8" />
+			<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+			<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 			<title>Restaurar Contraseña</title>
+			<style>
+				body {
+					font-family: Arial, sans-serif;
+					background-color: #f4f4f4;
+					color: #333;
+					margin: 0;
+					padding: 0;
+				}
+				.container {
+					max-width: 600px;
+					margin: 0 auto;
+					background-color: #fff;
+					padding: 20px;
+					border-radius: 8px;
+					box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+				}
+				.header {
+					background-color: #8a2be2;
+					color: #fff;
+					padding: 10px 0;
+					text-align: center;
+					border-radius: 8px 8px 0 0;
+				}
+				.content {
+					margin: 20px 0;
+					text-align: center;
+				}
+				.button {
+					display: inline-block;
+					background-color: #6a5acd;
+					padding: 15px 25px;
+					text-decoration: none;
+					border-radius: 5px;
+					margin-top: 20px;
+					font-size: 16px;
+					font-weight: bold;
+					color: white !important;
+				}
+				.button:hover {
+					background-color: #6495ed;
+				}
+				.footer {
+					font-size: 12px;
+					color: #777;
+					text-align: center;
+					margin-top: 20px;
+				}
+			</style>
 		</head>
 		<body>
-			<p>Hola <b>%s</b>,</p>
-			<p>Utiliza el siguiente enlace para restaurar tu contraseña:</p>
-			<p><a href="%s/api/reset-password?token=%s">Restaurar Contraseña</a></p>
-			<p>Si no solicitaste este cambio, puedes ignorar este correo.</p>
+			<div class="container">
+				<div class="header">
+					<h1>Restaurar tu contraseña</h1>
+				</div>
+				<div class="content">
+					<p>Hola <b>%s</b>,</p>
+					<p>Has solicitado restaurar tu contraseña. Utiliza el siguiente enlace para hacerlo:</p>
+					<a href="%s/api/reset-password?token=%s" class="button">Restaurar contraseña</a>
+					<p>Si no solicitaste este cambio, puedes ignorar este correo.</p>
+				</div>
+				<div class="footer">
+					<p>© 2024 Ovnicore. Todos los derechos reservados.</p>
+				</div>
+			</div>
 		</body>
 		</html>
-	`, userName, os.Getenv("HOST_VIEW"), token)
+	`, userName, hostView, token)
 
-	// Configuración de email
-	from := os.Getenv("USER_EMAIL")
-	pass := os.Getenv("PASSWORD_EMAIL")
+	// Configuración del email
 	to := email
+	subject := "Restaurar contraseña"
+	headers := map[string]string{
+		"From":         from,
+		"To":           to,
+		"Subject":      subject,
+		"Content-Type": "text/html; charset=UTF-8",
+	}
+
+	// Construir el mensaje con cabeceras
+	var msg strings.Builder
+	for k, v := range headers {
+		msg.WriteString(fmt.Sprintf("%s: %s\r\n", k, v))
+	}
+	msg.WriteString("\r\n")
+	msg.WriteString(htmlTemplate)
 
 	// Configuración SMTP (Gmail)
 	smtpHost := "smtp.gmail.com"
 	smtpPort := "587"
 	auth := smtp.PlainAuth("", from, pass, smtpHost)
 
-	msg := []byte("To: " + to + "\r\n" +
-		"Subject: Restaurar contraseña\r\n" +
-		"Content-Type: text/html; charset=UTF-8\r\n\r\n" +
-		htmlTemplate)
-
 	// Enviar el email
-	return smtp.SendMail(smtpHost+":"+smtpPort, auth, from, []string{to}, msg)
+	err := smtp.SendMail(smtpHost+":"+smtpPort, auth, from, []string{to}, []byte(msg.String()))
+	if err != nil {
+		return fmt.Errorf("error enviando el correo: %w", err)
+	}
+
+	return nil
 }
 
 // ResetPassword restablece la contraseña del usuario

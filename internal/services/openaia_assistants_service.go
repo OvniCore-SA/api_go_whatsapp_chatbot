@@ -7,9 +7,8 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"os"
 	"time"
-
-	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/config"
 )
 
 type OpenAIAssistantService struct {
@@ -161,7 +160,7 @@ func (s *OpenAIAssistantService) UploadFileToGPT(fileContent io.Reader, filename
 	if err != nil {
 		return "", err
 	}
-	req.Header.Set("Authorization", "Bearer "+config.OPENAI_API_KEY)
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENAI_API_KEY"))
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 	//req.Header.Set("OpenAI-Beta", "assistants=v1")
 

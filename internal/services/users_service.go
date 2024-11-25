@@ -1,9 +1,12 @@
 package services
 
 import (
+	"errors"
+
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/repositories/mysql_client"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type UsersService struct {
@@ -38,7 +41,24 @@ func (s *UsersService) GetById(id int64) (dtos.UsersDto, error) {
 }
 
 func (s *UsersService) Create(dto dtos.UsersDto) error {
+	// Validar que la contraseña no esté vacía
+	if dto.Password == "" {
+		return errors.New("password is required")
+	}
+
+	// Encriptar la contraseña
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(dto.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return errors.New("failed to hash password")
+	}
+
+	// Reemplazar la contraseña en el DTO con la versión encriptada
+	dto.Password = string(hashedPassword)
+
+	// Mapear el DTO a la entidad
 	record := entities.MapDtoToUsers(dto)
+
+	// Guardar el usuario en el repositorio
 	return s.repository.Create(record)
 }
 

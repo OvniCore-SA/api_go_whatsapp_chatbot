@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
-	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/config"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -17,7 +17,7 @@ func (m *MiddlewareManager) ValidarApikey() func(c *fiber.Ctx) error {
 	return func(c *fiber.Ctx) error {
 		apiKey := c.Get("ApiKey")
 
-		if apiKey != config.API_SYSTEM_KEY {
+		if apiKey != os.Getenv("API_SYSTEM_KEY") {
 			err := fmt.Errorf("acceso denegado o permisos insuficientes")
 			return fiber.NewError(403, err.Error())
 		}

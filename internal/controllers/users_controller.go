@@ -62,9 +62,16 @@ func (controller *UsersController) Create(c *fiber.Ctx) error {
 			"message": err.Error(),
 		})
 	}
+	// Validar los datos para creación
+	if err := dto.ValidateUsersDto(true); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": err.Error(),
+		})
+	}
 	err := controller.service.Create(dto)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
 			"message": err.Error(),
 		})

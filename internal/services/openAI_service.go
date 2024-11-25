@@ -6,9 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 
-	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/config"
 	"github.com/sashabaranov/go-openai"
 )
 
@@ -42,7 +42,7 @@ type OpenAIResponse struct {
 
 func (service *OpenAIService) SendMessageToOpenAI(userMessage string, menuOptions string) (string, error) {
 
-	maxTokensGeneralMessages, err := strconv.Atoi(config.MAX_TOKENS_GENERAL_MESSAGE)
+	maxTokensGeneralMessages, err := strconv.Atoi(os.Getenv("MAX_TOKENS_GENERAL_MESSAGE"))
 	if err != nil {
 		fmt.Println("ERROR maxTokensGeneralMessages: " + err.Error())
 		return "", err
@@ -73,7 +73,7 @@ func (service *OpenAIService) SendMessageToOpenAI(userMessage string, menuOption
 
 func (service *OpenAIService) SendMessageBasicToOpenAI(prompt string, promptForOpenAI string) (string, error) {
 
-	_, err := strconv.Atoi(config.MAX_TOKENS_INITIAL_MESSAGE)
+	_, err := strconv.Atoi(os.Getenv("MAX_TOKENS_INITIAL_MESSAGE"))
 	if err != nil {
 		fmt.Println("ERROR maxTokensInitialMessages: " + err.Error())
 		return "", err
@@ -110,7 +110,7 @@ func (service *OpenAIService) SendMessageForHttpToOpenAI(requestBody *OpenAIRequ
 		return "", fmt.Errorf("error creating OpenAI request: %v", err)
 	}
 
-	req.Header.Set("Authorization", "Bearer "+config.OPENAI_API_KEY)
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENAI_API_KEY"))
 	req.Header.Set("Content-Type", "application/json")
 
 	// Hacer la solicitud HTTP

@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -218,7 +219,7 @@ func (service *WhatsappService) sendMessageBasic(message metaapi.SendMessageBasi
 
 	client := &http.Client{}
 
-	base, err := url.Parse(config.WHATSAPP_URL + "/" + config.WHATSAPP_VERSION + "/" + phoneNumberId + "/messages")
+	base, err := url.Parse(os.Getenv("WHATSAPP_URL") + "/" + os.Getenv("WHATSAPP_VERSION") + "/" + phoneNumberId + "/messages")
 	fmt.Println("Url: ", base.String())
 	if err != nil {
 		fmt.Println("Error:", err)
@@ -500,7 +501,7 @@ func (service *WhatsappService) SendTypingIndicator(responseComplet whatsapp.Res
 		sender = sender[:2] + sender[3:]
 	}
 
-	base, err := url.Parse(config.WHATSAPP_URL + "/" + config.WHATSAPP_VERSION + "/" + phoneNumberID + "/messages")
+	base, err := url.Parse(os.Getenv("WHATSAPP_URL") + "/" + os.Getenv("WHATSAPP_VERSION") + "/" + phoneNumberID + "/messages")
 	if err != nil {
 		return fmt.Errorf("error parcer url: %v", err)
 	}
@@ -526,7 +527,7 @@ func (service *WhatsappService) SendTypingIndicator(responseComplet whatsapp.Res
 	if err != nil {
 		return fmt.Errorf("error creating request: %v", err)
 	}
-	req.Header.Set("Authorization", "Bearer "+config.OPENAI_API_KEY)
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENAI_API_KEY"))
 	req.Header.Set("Content-Type", "application/json")
 
 	// Cliente HTTP

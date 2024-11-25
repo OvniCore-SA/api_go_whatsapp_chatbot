@@ -16,7 +16,6 @@ type Users struct {
 	Activo         bool
 	Telefono       string
 	CuilCuit       string
-	ChatbotsID     int64            `gorm:"chatbots_id"`
 	RolesID        int64            `gorm:"foreignKey:RolesID"`
 	Rol            Roles            `gorm:"foreignKey:RolesID"`
 	PasswordResets []PasswordResets `gorm:"foreignKey:UsersID"` // Relación de uno a muchos con PasswordResets
@@ -53,7 +52,6 @@ func MapEntitiesToUsersDto(record Users) dtos.UsersDto {
 		Activo:        record.Activo,
 		Telefono:      record.Telefono,
 		CuilCuit:      record.CuilCuit,
-		ChatbotsID:    record.ChatbotsID,
 		RolesID:       record.RolesID,
 		Rol:           rolDto,
 		CreatedAt:     record.CreatedAt.Format(time.RFC3339),
@@ -66,5 +64,14 @@ func MapEntitiesToUsersDto(record Users) dtos.UsersDto {
 func MapDtoToUsers(dto dtos.UsersDto) Users {
 	return Users{
 		// Mapear campos desde el DTO al dominio aquí
+		ID:            dto.ID,
+		Name:          dto.Name,
+		Email:         dto.Email,
+		Password:      dto.Password,
+		RememberToken: dto.RememberToken,
+		Activo:        dto.Activo,
+		Telefono:      dto.Telefono,
+		CuilCuit:      dto.CuilCuit,
+		RolesID:       dto.RolesID,
 	}
 }

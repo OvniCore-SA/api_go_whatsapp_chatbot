@@ -2,8 +2,8 @@ package controllers
 
 import (
 	"fmt"
+	"os"
 
-	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/config"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos/whatsapp"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/services"
 	"github.com/gofiber/fiber/v2"
@@ -60,7 +60,7 @@ func (controller *WhatsappController) GetWhatsapp(c *fiber.Ctx) error {
 	requestHubChallenge := c.Query("hub.challenge")
 
 	var ReqWhats whatsapp.RequestWhatsapp
-	if len(tokenApiWhatsapp) > 0 && len(requestHubChallenge) > 0 && tokenApiWhatsapp == config.WEBHOOK_TOKEN_WHATSAPP {
+	if len(tokenApiWhatsapp) > 0 && len(requestHubChallenge) > 0 && tokenApiWhatsapp == os.Getenv("WEBHOOK_TOKEN_WHATSAPP") {
 		ReqWhats.Hub_challenge = requestHubChallenge
 		ct := c
 		ct.Set("Content-Type", "text/plain")

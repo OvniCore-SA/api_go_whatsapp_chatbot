@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"mime/multipart"
+	"os"
 	"time"
 
-	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/config"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/repositories/mysql_client"
@@ -121,7 +121,7 @@ func uploadToMinIO(client *minio.Client, file multipart.File, fileName string, f
 	// Subir el archivo al bucket de MinIO
 	_, err := client.PutObject(
 		context.Background(),
-		config.MINIO_BUCKET_NAME, // Cambia esto por el nombre de tu bucket
+		os.Getenv("MINIO_BUCKET_NAME"), // Cambia esto por el nombre de tu bucket
 		uniqueFileName,
 		file,
 		fileSize,
@@ -135,5 +135,5 @@ func uploadToMinIO(client *minio.Client, file multipart.File, fileName string, f
 }
 
 func deleteFromMinIO(client *minio.Client, filename string) error {
-	return client.RemoveObject(context.Background(), config.MINIO_BUCKET_NAME, filename, minio.RemoveObjectOptions{})
+	return client.RemoveObject(context.Background(), os.Getenv("MINIO_BUCKET_NAME"), filename, minio.RemoveObjectOptions{})
 }
