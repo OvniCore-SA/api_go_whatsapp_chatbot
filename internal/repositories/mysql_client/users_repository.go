@@ -23,7 +23,9 @@ func (r *UsersRepository) Create(record entities.Users) error {
 // FindByID retrieves a record by its ID
 func (r *UsersRepository) FindByID(id int64) (entities.Users, error) {
 	var record entities.Users
-	err := r.db.First(&record, id).Error
+	query := r.db.Preload("Rol")
+	query = query.Preload("Rol.Permissions")
+	err := query.First(&record, id).Error
 	return record, err
 }
 

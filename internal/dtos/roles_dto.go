@@ -5,7 +5,7 @@ type RolesDto struct {
 	Rol         string
 	Description string
 	Permissions []PermissionsDto
-	CreatedAt   string
-	UpdatedAt   string
-	DeletedAt   string
+	CreatedAt   string `json:"CreatedAt,omitempty"`
+	UpdatedAt   string `json:"UpdatedAt,omitempty"`
+	DeletedAt   string `json:"DeletedAt,omitempty"`
 }
