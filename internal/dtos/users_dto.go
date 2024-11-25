@@ -70,6 +70,9 @@ func (dto *UsersDto) ValidateUsersDto(isCreate bool) error {
 		if dto.ID <= 0 {
 			return errors.New("el ID es obligatorio al editar un usuario")
 		}
+		if strings.TrimSpace(dto.Password) != "" {
+			return errors.New("no puedes actualizar la contraseña, solo puedes restablecerla.")
+		}
 	}
 
 	return nil

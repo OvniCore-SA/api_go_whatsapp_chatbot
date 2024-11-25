@@ -103,6 +103,15 @@ func (controller *UsersController) Update(c *fiber.Ctx) error {
 		})
 	}
 
+	dto.ID = int64(id)
+	// Validar los datos para creación
+	if err := dto.ValidateUsersDto(false); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": err.Error(),
+		})
+	}
+
 	err = controller.service.Update(int64(id), dto)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
