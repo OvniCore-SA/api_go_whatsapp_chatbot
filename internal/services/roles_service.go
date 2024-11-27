@@ -37,6 +37,15 @@ func (s *RolesService) GetById(id string) (dtos.RolesDto, error) {
 	return entities.MapEntitiesToRolesDto(record), nil
 }
 
+func (s *RolesService) GetByRol(rol string) (dtos.RolesDto, error) {
+	rolDto, err := s.repository.GetByRol(rol)
+	if err != nil {
+		return dtos.RolesDto{}, err
+	}
+
+	return entities.MapEntitiesToRolesDto(rolDto), nil
+}
+
 func (s *RolesService) Create(dto dtos.RolesDto) error {
 	record := entities.MapDtoToRoles(dto)
 	return s.repository.Create(record)

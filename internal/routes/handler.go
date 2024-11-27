@@ -81,17 +81,11 @@ func Setup(app *fiber.App,
 	api.Put("/roles/:id", middleware.ValidarApikey(), RolesController.Update)
 	api.Delete("/roles/:id", middleware.ValidarApikey(), RolesController.Delete)
 
-	api.Get("/Permissions", middleware.ValidarApikey(), PermissionsController.GetAll)
-	api.Get("/Permissions/:id", middleware.ValidarApikey(), PermissionsController.GetById)
-	api.Post("/Permissions", middleware.ValidarApikey(), PermissionsController.Create)
-	api.Put("/Permissions/:id", middleware.ValidarApikey(), PermissionsController.Update)
-	api.Delete("/Permissions/:id", middleware.ValidarApikey(), PermissionsController.Delete)
-
-	api.Get("/Permissions", middleware.ValidarApikey(), PermissionsController.GetAll)
-	api.Get("/Permissions/:id", middleware.ValidarApikey(), PermissionsController.GetById)
-	api.Post("/Permissions", middleware.ValidarApikey(), PermissionsController.Create)
-	api.Put("/Permissions/:id", middleware.ValidarApikey(), PermissionsController.Update)
-	api.Delete("/Permissions/:id", middleware.ValidarApikey(), PermissionsController.Delete)
+	api.Get("/permissions", middleware.ValidarApikey(), PermissionsController.GetAll)
+	api.Get("/permissions/:id", middleware.ValidarApikey(), PermissionsController.GetById)
+	api.Post("/permissions", middleware.ValidarApikey(), PermissionsController.Create)
+	api.Put("/permissions/:id", middleware.ValidarApikey(), PermissionsController.Update)
+	api.Delete("/permissions/:id", middleware.ValidarApikey(), PermissionsController.Delete)
 
 	// Añadir estas rutas en tu archivo principal de rutas:
 	api.Get("/number-phones", middleware.ValidarApikey(), NumberPhonesController.GetAll)

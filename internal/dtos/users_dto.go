@@ -51,9 +51,9 @@ func (dto *UsersDto) ValidateUsersDto(isCreate bool) error {
 		return errors.New("el DNI no debe exceder los 20 caracteres")
 	}
 
-	if dto.RolesID <= 0 {
-		return errors.New("el ID del rol es obligatorio y debe ser mayor que 0")
-	}
+	// if dto.RolesID <= 0 {
+	// 	return errors.New("el ID del rol es obligatorio y debe ser mayor que 0")
+	// }
 
 	// Validaciones específicas para creación
 	if isCreate {

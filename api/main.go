@@ -47,9 +47,11 @@ func main() {
 	OpenAIAssistantClient := services.NewOpenAIAssistantService(os.Getenv("OPENAI_API_KEY"))
 
 	// Inicialización de repositorios y servicios
+	RolesRepository := mysql_client.NewRolesRepository(db)
+	RolesService := services.NewRolesService(RolesRepository)
 	UtilService := services.NewUtilService()
 	UsersRepository := mysql_client.NewUsersRepository(db)
-	UsersService := services.NewUsersService(UsersRepository)
+	UsersService := services.NewUsersService(UsersRepository, RolesService)
 	UsersController := controllers.NewUsersController(UsersService)
 	PrompsRepository := mysql_client.NewPrompsRepository(db)
 	PrompsService := services.NewPrompsService(PrompsRepository)
@@ -60,8 +62,7 @@ func main() {
 	Password_resetsRepository := mysql_client.NewPasswordResetsRepository(db)
 	Password_resetsService := services.NewPassword_resetsService(Password_resetsRepository)
 	Password_resetsController := controllers.NewPassword_resetsController(Password_resetsService)
-	RolesRepository := mysql_client.NewRolesRepository(db)
-	RolesService := services.NewRolesService(RolesRepository)
+
 	RolesController := controllers.NewRolesController(RolesService)
 	PermissionsRepository := mysql_client.NewPermissionsRepository(db)
 	PermissionsService := services.NewPermissionsService(PermissionsRepository)

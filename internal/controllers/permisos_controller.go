@@ -34,7 +34,11 @@ func (controller *PermissionsController) GetById(c *fiber.Ctx) error {
 			"message": err.Error(),
 		})
 	}
-	return c.JSON(item)
+	return c.JSON(fiber.Map{
+		"status":  "success",
+		"data":    item,
+		"message": "Item created successfully",
+	})
 }
 
 func (controller *PermissionsController) Create(c *fiber.Ctx) error {

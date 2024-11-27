@@ -34,7 +34,11 @@ func (controller *RolesController) GetById(c *fiber.Ctx) error {
 			"message": err.Error(),
 		})
 	}
-	return c.JSON(item)
+	return c.JSON(fiber.Map{
+		"status":  "success",
+		"data":    item,
+		"message": "Item created successfully",
+	})
 }
 
 func (controller *RolesController) Create(c *fiber.Ctx) error {
@@ -76,6 +80,7 @@ func (controller *RolesController) Update(c *fiber.Ctx) error {
 	}
 	return c.JSON(fiber.Map{
 		"status":  "success",
+		"data":    dto,
 		"message": "Item updated successfully",
 	})
 }
