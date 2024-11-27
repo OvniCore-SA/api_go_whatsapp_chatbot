@@ -2,6 +2,7 @@ package services
 
 import (
 	"errors"
+	"os"
 
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities"
@@ -10,11 +11,12 @@ import (
 )
 
 type UsersService struct {
-	repository *mysql_client.UsersRepository
+	repository   *mysql_client.UsersRepository
+	rolesService *RolesService
 }
 
-func NewUsersService(repository *mysql_client.UsersRepository) *UsersService {
-	return &UsersService{repository: repository}
+func NewUsersService(repository *mysql_client.UsersRepository, rolesService *RolesService) *UsersService {
+	return &UsersService{repository: repository, rolesService: rolesService}
 }
 
 func (s *UsersService) GetAll() ([]dtos.UsersDto, error) {
@@ -45,6 +47,10 @@ func (s *UsersService) Create(dto dtos.UsersDto) error {
 	if dto.Password == "" {
 		return errors.New("password is required")
 	}
+
+	// Asigno el rol normal (USER).
+	rolUser, err := s.rolesService.GetByRol(os.Getenv("ROL_USER"))
+	dto.RolesID = rolUser.ID
 
 	// Encriptar la contraseña
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(dto.Password), bcrypt.DefaultCost)

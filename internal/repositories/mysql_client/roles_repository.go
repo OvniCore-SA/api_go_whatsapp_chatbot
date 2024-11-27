@@ -32,6 +32,12 @@ func (r *RolesRepository) Update(id string, record entities.Roles) error {
 	return r.db.Model(&record).Where("id = ?", id).Updates(record).Error
 }
 
+func (r *RolesRepository) GetByRol(rol string) (entities.Roles, error) {
+	var record entities.Roles
+	err := r.db.Model(&record).Where("rol = ?", rol).Find(&record).Error
+	return record, err
+}
+
 // Delete removes a record from the database
 func (r *RolesRepository) Delete(id string) error {
 	return r.db.Delete(&entities.Roles{}, id).Error
