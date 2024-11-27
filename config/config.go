@@ -25,6 +25,9 @@ func InitDatabase() (*gorm.DB, error) {
 		PrepareStmt: true,
 	})
 	if err != nil {
+		fmt.Println("====")
+		fmt.Println(os.Getenv("DB_HOST_DB"))
+		fmt.Println("====")
 		return nil, err
 	}
 
