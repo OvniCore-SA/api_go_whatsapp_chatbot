@@ -25,7 +25,7 @@ jobs:
           GIT_PASSWORD: ${{ secrets.USER_TOKEN }}
         run: |
           sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no -p $SSH_PORT $SSH_USER@$SSH_HOST << 'EOF'
-            cd /path/to/your/docker/directory &&
+            cd /root/docker/api_go_chatbot_whatsapp &&
             
             # Stop the running container if exists
             docker stop api_go_chatbot_whatsapp_container || true &&
