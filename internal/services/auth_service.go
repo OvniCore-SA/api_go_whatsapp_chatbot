@@ -2,7 +2,6 @@ package services
 
 import (
 	"crypto/rand"
-	"crypto/tls"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -218,50 +217,10 @@ func (s *AuthService) sendResetPasswordEmail(email, token, userName string) erro
 	smtpPort := "587"
 	auth := smtp.PlainAuth("", from, pass, smtpHost)
 
-	// Crear conexión TLS explícita
-	tlsConfig := &tls.Config{
-		InsecureSkipVerify: true, // Asegúrate de que el certificado TLS sea válido
-		ServerName:         smtpHost,
-	}
-
-	conn, err := tls.Dial("tcp", smtpHost+":"+smtpPort, tlsConfig)
+	// Enviar el email
+	err := smtp.SendMail(smtpHost+":"+smtpPort, auth, from, []string{to}, []byte(msg.String()))
 	if err != nil {
-		return fmt.Errorf("error creando conexión TLS: %w", err)
-	}
-	defer conn.Close()
-
-	// Crear cliente SMTP
-	client, err := smtp.NewClient(conn, smtpHost)
-	if err != nil {
-		return fmt.Errorf("error creando cliente SMTP: %w", err)
-	}
-	defer client.Quit()
-
-	// Autenticar
-	if err := client.Auth(auth); err != nil {
-		return fmt.Errorf("error autenticando en el servidor SMTP: %w", err)
-	}
-
-	// Configurar remitente y destinatario
-	if err := client.Mail(from); err != nil {
-		return fmt.Errorf("error configurando remitente: %w", err)
-	}
-	if err := client.Rcpt(to); err != nil {
-		return fmt.Errorf("error configurando destinatario: %w", err)
-	}
-
-	// Enviar mensaje
-	w, err := client.Data()
-	if err != nil {
-		return fmt.Errorf("error iniciando mensaje SMTP: %w", err)
-	}
-
-	if _, err := w.Write([]byte(msg.String())); err != nil {
-		return fmt.Errorf("error escribiendo mensaje SMTP: %w", err)
-	}
-
-	if err := w.Close(); err != nil {
-		return fmt.Errorf("error cerrando mensaje SMTP: %w", err)
+		return fmt.Errorf("error enviando el correo: %w", err)
 	}
 
 	return nil
