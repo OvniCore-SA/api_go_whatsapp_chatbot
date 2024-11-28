@@ -150,6 +150,8 @@ func (s *AuthService) sendResetPasswordEmail(email, token, userName string) erro
 
 	return nil
 }
+
+// Devuelve el template para enviar por correo electronico.
 func getTemplate(userName, token, hostView string) string {
 	htmlTemplate := fmt.Sprintf(`
 		<!DOCTYPE html>
