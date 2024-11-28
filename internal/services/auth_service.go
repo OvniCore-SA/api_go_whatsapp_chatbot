@@ -118,6 +118,39 @@ func (s *AuthService) sendResetPasswordEmail(email, token, userName string) erro
 	}
 
 	// Nueva plantilla de correo
+	htmlTemplate := getTemplate(userName, token, hostView)
+	// Configuración del email
+	to := email
+	subject := "Restaurar contraseña"
+	headers := map[string]string{
+		"From":         from,
+		"To":           to,
+		"Subject":      subject,
+		"Content-Type": "text/html; charset=UTF-8",
+	}
+
+	// Construir el mensaje con cabeceras
+	var msg strings.Builder
+	for k, v := range headers {
+		msg.WriteString(fmt.Sprintf("%s: %s\r\n", k, v))
+	}
+	msg.WriteString("\r\n")
+	msg.WriteString(htmlTemplate)
+
+	// Configuración SMTP (Gmail)
+	smtpHost := "smtp.gmail.com"
+	smtpPort := "587"
+	auth := smtp.PlainAuth("", from, pass, smtpHost)
+
+	// Enviar el email
+	err := smtp.SendMail(smtpHost+":"+smtpPort, auth, from, []string{to}, []byte(msg.String()))
+	if err != nil {
+		return fmt.Errorf("error enviando el correo: %w", err)
+	}
+
+	return nil
+}
+func getTemplate(userName, token, hostView string) string {
 	htmlTemplate := fmt.Sprintf(`
 		<!DOCTYPE html>
 		<html lang="es">
@@ -193,37 +226,7 @@ func (s *AuthService) sendResetPasswordEmail(email, token, userName string) erro
 		</body>
 		</html>
 	`, userName, hostView, token)
-
-	// Configuración del email
-	to := email
-	subject := "Restaurar contraseña"
-	headers := map[string]string{
-		"From":         from,
-		"To":           to,
-		"Subject":      subject,
-		"Content-Type": "text/html; charset=UTF-8",
-	}
-
-	// Construir el mensaje con cabeceras
-	var msg strings.Builder
-	for k, v := range headers {
-		msg.WriteString(fmt.Sprintf("%s: %s\r\n", k, v))
-	}
-	msg.WriteString("\r\n")
-	msg.WriteString(htmlTemplate)
-
-	// Configuración SMTP (Gmail)
-	smtpHost := "smtp.gmail.com"
-	smtpPort := "587"
-	auth := smtp.PlainAuth("", from, pass, smtpHost)
-
-	// Enviar el email
-	err := smtp.SendMail(smtpHost+":"+smtpPort, auth, from, []string{to}, []byte(msg.String()))
-	if err != nil {
-		return fmt.Errorf("error enviando el correo: %w", err)
-	}
-
-	return nil
+	return htmlTemplate
 }
 
 // ResetPassword restablece la contraseña del usuario
