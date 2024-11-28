@@ -26,7 +26,7 @@ func Setup(app *fiber.App,
 	})
 	// ROUTE GENERAL ("url_base/api")
 	api := app.Group("/api")
-	auth := api.Group("/auth")
+	//auth := api.Group("/auth")
 
 	api.Post("/assistants/add", middleware.ValidarApikey(), AssistantController.AddAssistant)
 	api.Get("/assistants/", middleware.ValidarApikey(), AssistantController.GetAllAssistants)
@@ -41,9 +41,9 @@ func Setup(app *fiber.App,
 	app.Put("/files/:id", middleware.ValidarApikey(), FileController.UpdateFile)
 	app.Delete("/files/:id", middleware.ValidarApikey(), FileController.DeleteFile)
 
-	auth.Post("/login", AuthController.Login)
-	auth.Post("/restore-password", AuthController.RestorePassword)
-	auth.Post("/reset-password", AuthController.ResetPassword)
+	api.Post("/login", AuthController.Login)
+	api.Post("/restore-password", AuthController.RestorePassword)
+	api.Post("/reset-password", AuthController.ResetPassword)
 
 	api.Get("/users", middleware.ValidarApikey(), UsersController.GetAll)
 	api.Get("/users/:id", middleware.ValidarApikey(), UsersController.GetById)
