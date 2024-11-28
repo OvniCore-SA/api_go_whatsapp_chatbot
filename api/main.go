@@ -11,6 +11,7 @@ import (
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/repositories/mysql_client"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/routes"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/services"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -94,6 +95,11 @@ func main() {
 		Format:     "${time} | ${status} | ${latency} | ${ip} | ${method} | ${path}\n",
 		TimeFormat: "15:04:05", // Formato de hora
 		TimeZone:   "Local",
+	}))
+	app.Use(cors.New(cors.Config{
+		AllowOrigins: os.Getenv("HOST_VIEW"),
+		AllowHeaders: "",
+		AllowMethods: "GET,POST,PUT,DELETE",
 	}))
 
 	// Configuración de TODAS las rutas
