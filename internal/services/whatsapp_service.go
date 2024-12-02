@@ -156,6 +156,23 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 		contact.NumberPhonesID = numberPhone.ID
 		contact.OpenaiThreadsID = threadID
 		config.DB.Save(contact)
+
+		// Obtengo el vector_store que usa el assistant
+		files, err := service.assistantService.serviceFile.GetFileByAssistantID(assistant.ID)
+		if err != nil {
+			return fmt.Errorf("error GetFileByAssistantID: %v", err)
+		}
+
+		var vectorStoreID dtos.FileDto
+		if len(files) > 0 {
+			vectorStoreID = files[len(files)-1]
+		}
+
+		// Asigno el archivo al hilo.
+		err = service.openAIAssistantService.EjecutarThread(threadID, []string{vectorStoreID.OpenaiVectorStoreIDs})
+		if err != nil {
+			return fmt.Errorf("error EjecutarThread: %v", err)
+		}
 	}
 
 	// Guardar el mensaje del contacto en la base de datos
@@ -199,10 +216,10 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 
 func (s *WhatsappService) InteractWithAssistant(threadID, assistantID, message string, contactDBID, assistantDBID int64) (string, error) {
 	// Obtenemos la ultima conversacion del usuario con el assistant
-	conversation, err := s.getConversationHistory(assistantDBID, contactDBID)
-	if err != nil {
-		return "", fmt.Errorf("error fetching conversation history: %v", err)
-	}
+	// conversation, err := s.getConversationHistory(assistantDBID, contactDBID)
+	// if err != nil {
+	// 	return "", fmt.Errorf("error fetching conversation history: %v", err)
+	// }
 
 	// Agregar el nuevo mensaje al historial
 	// conversation = append(conversation, map[string]interface{}{
@@ -211,7 +228,12 @@ func (s *WhatsappService) InteractWithAssistant(threadID, assistantID, message s
 	// })
 
 	// Crear un run para el thread con la conversación completa
-	runID, err := s.openAIAssistantService.CreateRunForThreadWithConversation(threadID, assistantID, conversation)
+	err := s.openAIAssistantService.SendMessageToThread(threadID, message, true)
+	if err != nil {
+		return "", fmt.Errorf("error creating run with conversation: %v", err)
+	}
+
+	runID, err := s.openAIAssistantService.CreateRunForThreadWithConversation(threadID, assistantID, nil)
 	if err != nil {
 		return "", fmt.Errorf("error creating run with conversation: %v", err)
 	}

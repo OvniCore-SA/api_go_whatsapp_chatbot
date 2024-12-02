@@ -29,6 +29,8 @@ func (s *OpenAIAssistantService) doRequest(req *http.Request) (*http.Response, e
 	req.Header.Add("OpenAI-Beta", "assistants=v2")
 	req.Header.Add("Content-Type", "application/json")
 
+	fmt.Println("Ejecutando endpoint: " + req.URL.Path)
+
 	resp, err := s.client.Do(req)
 	if err != nil {
 		return nil, err
@@ -262,44 +264,58 @@ func (s *OpenAIAssistantService) addFileToVectorStore(vectorStoreID, fileID stri
 }
 
 // SendMessageToThread envía un mensaje a un Thread existente en OpenAI
-func (s *OpenAIAssistantService) SendMessageToThread(threadID string, messages []map[string]interface{}) error {
-	// Preparar el cuerpo de la solicitud
+func (s *OpenAIAssistantService) SendMessageToThread(threadID, message string, user bool) error {
+	// Preparar el cuerpo de la solicitud con el mensaje especificado
+	rol := "user"
+	if !user {
+		rol = "assistant"
+	}
 	data := map[string]interface{}{
-		"messages": messages,
+		"role": rol,
+		"content": []map[string]interface{}{
+			{
+				"text": message,
+				"type": "text",
+			},
+		},
 	}
 
-	// Serializar el cuerpo de la solicitud
+	// Serializar el cuerpo de la solicitud a JSON
 	body, err := json.Marshal(data)
 	if err != nil {
 		return fmt.Errorf("error marshalling request body: %v", err)
 	}
 
 	// Crear la solicitud HTTP
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s/threads/%s/messages", os.Getenv("OPENAI_API_URL"), threadID), bytes.NewBuffer(body))
+	url := fmt.Sprintf("%s/threads/%s/messages", os.Getenv("OPENAI_API_URL"), threadID)
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
 	if err != nil {
 		return fmt.Errorf("error creating request: %v", err)
 	}
 
 	// Enviar la solicitud y procesar la respuesta
+
 	resp, err := s.doRequest(req)
 	if err != nil {
 		return fmt.Errorf("error sending request to OpenAI: %v", err)
 	}
 	defer resp.Body.Close()
 
+	// Verificar el código de respuesta
 	if resp.StatusCode != http.StatusOK {
 		responseBody, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("failed to send messages to thread, status code: %d, response: %s", resp.StatusCode, string(responseBody))
 	}
 
+	fmt.Println("Mensaje enviado exitosamente")
 	return nil
 }
 
 func (s *OpenAIAssistantService) CreateRunForThreadWithConversation(threadID, assistantID string, conversation []map[string]interface{}) (string, error) {
 	// Estructura del cuerpo de la solicitud
 	data := map[string]interface{}{
-		"assistant_id":        assistantID,
-		"additional_messages": conversation,
+		"assistant_id": assistantID,
+		// "additional_messages": conversation,
 	}
 
 	// Serializar el cuerpo de la solicitud
@@ -450,4 +466,50 @@ func (s *OpenAIAssistantService) CreateThread(model, instructions string) (strin
 	}
 
 	return result.ID, nil
+}
+
+// EjecutarThread edita un thread colocandole un vectorstore.
+func (s *OpenAIAssistantService) EjecutarThread(threadID string, vectorStoreIDs []string) error {
+	// Construir el cuerpo de la solicitud
+	payload := map[string]interface{}{
+		"tool_resources": map[string]interface{}{
+			"file_search": map[string]interface{}{
+				"vector_store_ids": vectorStoreIDs,
+			},
+		},
+	}
+
+	// Codificar el cuerpo en JSON
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("error encoding payload: %v", err)
+	}
+
+	// Crear la solicitud HTTP
+	url := fmt.Sprintf("%s/threads/%s", os.Getenv("OPENAI_API_URL"), threadID)
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(payloadBytes))
+	if err != nil {
+		return fmt.Errorf("error creating request: %v", err)
+	}
+
+	// Enviar la solicitud y procesar la respuesta
+	resp, err := s.doRequest(req)
+	if err != nil {
+		return fmt.Errorf("error sending request to OpenAI: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// Verificar el código de respuesta
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
+
+	// Leer y procesar la respuesta (opcional)
+	var response map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+		return fmt.Errorf("error decoding response: %v", err)
+	}
+
+	fmt.Printf("Respuesta de OpenAI: %v\n", response)
+	return nil
 }
