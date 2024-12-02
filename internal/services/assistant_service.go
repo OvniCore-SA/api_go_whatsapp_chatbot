@@ -50,7 +50,7 @@ func (s *AssistantService) UploadFileToGPT(fileContent io.Reader, filename strin
 	writer.Close()
 
 	// Crear la solicitud HTTP
-	req, err := http.NewRequest("POST", baseURL+"/files", body)
+	req, err := http.NewRequest("POST", os.Getenv("OPENAI_API_URL")+"/files", body)
 	if err != nil {
 		return "", err
 	}
@@ -148,7 +148,7 @@ func (s *AssistantService) CreateAssistant(data dtos.AssistantDto) (dtos.Assista
 }
 
 func (s *AssistantService) DeleteOpenAIAssistant(assistantID string) error {
-	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/assistants/%s", baseURL, assistantID), nil)
+	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/assistants/%s", os.Getenv("OPENAI_API_URL"), assistantID), nil)
 	if err != nil {
 		return err
 	}

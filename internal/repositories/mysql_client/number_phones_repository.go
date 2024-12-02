@@ -43,3 +43,14 @@ func (r *NumberPhonesRepository) List() ([]entities.NumberPhone, error) {
 	err := r.db.Find(&records).Error
 	return records, err
 }
+
+func (r *NumberPhonesRepository) UUIDExists(uuid string) (bool, error) {
+	var count int64
+	err := r.db.Model(&entities.NumberPhone{}).Where("uuid = ?", uuid).Count(&count).Error
+	if err != nil {
+		return false, err
+	}
+
+	// Si count > 0, significa que ya existe un número de teléfono con ese UUID
+	return count > 0, nil
+}

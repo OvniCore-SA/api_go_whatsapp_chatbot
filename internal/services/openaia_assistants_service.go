@@ -23,8 +23,6 @@ func NewOpenAIAssistantService(apiKey string) *OpenAIAssistantService {
 	}
 }
 
-const baseURL = "https://api.openai.com/v1"
-
 // Helper para realizar peticiones
 func (s *OpenAIAssistantService) doRequest(req *http.Request) (*http.Response, error) {
 	req.Header.Add("Authorization", "Bearer "+s.apiKey)
@@ -59,7 +57,7 @@ func (s *OpenAIAssistantService) CreateAssistant(name, instructions, model, vect
 	}
 
 	body, _ := json.Marshal(data)
-	req, err := http.NewRequest("POST", baseURL+"/assistants", bytes.NewBuffer(body))
+	req, err := http.NewRequest("POST", os.Getenv("OPENAI_API_URL")+"/assistants", bytes.NewBuffer(body))
 	if err != nil {
 		return "", err
 	}
@@ -83,7 +81,7 @@ func (s *OpenAIAssistantService) CreateAssistant(name, instructions, model, vect
 // DeleteAssistant elimina un asistente específico de OpenAI por su ID
 func (s *OpenAIAssistantService) DeleteAssistant(assistantID string) error {
 	// Crear la solicitud DELETE con la URL del asistente
-	url := fmt.Sprintf("%s/assistants/%s", baseURL, assistantID)
+	url := fmt.Sprintf("%s/assistants/%s", os.Getenv("OPENAI_API_URL"), assistantID)
 	req, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
 		return err
@@ -114,7 +112,7 @@ func (s *OpenAIAssistantService) CreateVectorStore(name string) (string, error) 
 	data := map[string]string{"name": name}
 
 	body, _ := json.Marshal(data)
-	req, err := http.NewRequest("POST", baseURL+"/vector_stores", bytes.NewBuffer(body))
+	req, err := http.NewRequest("POST", os.Getenv("OPENAI_API_URL")+"/vector_stores", bytes.NewBuffer(body))
 	if err != nil {
 		return "", err
 	}
@@ -156,7 +154,7 @@ func (s *OpenAIAssistantService) UploadFileToGPT(fileContent io.Reader, filename
 	writer.Close()
 
 	// Crear la solicitud HTTP
-	req, err := http.NewRequest("POST", baseURL+"/files", body)
+	req, err := http.NewRequest("POST", os.Getenv("OPENAI_API_URL")+"/files", body)
 	if err != nil {
 		return "", err
 	}
@@ -192,7 +190,7 @@ func (s *OpenAIAssistantService) UploadFileToGPT(fileContent io.Reader, filename
 // DeleteFile elimina un archivo específico de OpenAI por su ID
 func (s *OpenAIAssistantService) DeleteFile(fileID string) error {
 	// Crear la URL para la solicitud DELETE
-	url := fmt.Sprintf("%s/files/%s", baseURL, fileID)
+	url := fmt.Sprintf("%s/files/%s", os.Getenv("OPENAI_API_URL"), fileID)
 	req, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
 		return err
@@ -221,7 +219,7 @@ func (s *OpenAIAssistantService) DeleteFile(fileID string) error {
 // DeleteFileFromVectorStore elimina un archivo específico de un vector_store por su ID y el ID del archivo
 func (s *OpenAIAssistantService) DeleteFileFromVectorStore(vectorStoreID, fileID string) error {
 	// Crear la URL para la solicitud DELETE
-	url := fmt.Sprintf("%s/vector_stores/%s/files/%s", baseURL, vectorStoreID, fileID)
+	url := fmt.Sprintf("%s/vector_stores/%s/files/%s", os.Getenv("OPENAI_API_URL"), vectorStoreID, fileID)
 	req, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
 		return err
@@ -254,7 +252,7 @@ func (s *OpenAIAssistantService) addFileToVectorStore(vectorStoreID, fileID stri
 	}
 
 	body, _ := json.Marshal(data)
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s/vector_stores/%s/files", baseURL, vectorStoreID), bytes.NewBuffer(body))
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/vector_stores/%s/files", os.Getenv("OPENAI_API_URL"), vectorStoreID), bytes.NewBuffer(body))
 	if err != nil {
 		return err
 	}
@@ -264,11 +262,10 @@ func (s *OpenAIAssistantService) addFileToVectorStore(vectorStoreID, fileID stri
 }
 
 // SendMessageToThread envía un mensaje a un Thread existente en OpenAI
-func (s *OpenAIAssistantService) SendMessageToThread(threadID, message string) error {
-	// Estructura del cuerpo de la solicitud
+func (s *OpenAIAssistantService) SendMessageToThread(threadID string, messages []map[string]interface{}) error {
+	// Preparar el cuerpo de la solicitud
 	data := map[string]interface{}{
-		"role":    "user",
-		"content": message,
+		"messages": messages,
 	}
 
 	// Serializar el cuerpo de la solicitud
@@ -278,7 +275,7 @@ func (s *OpenAIAssistantService) SendMessageToThread(threadID, message string) e
 	}
 
 	// Crear la solicitud HTTP
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s/threads/%s/messages", baseURL, threadID), bytes.NewBuffer(body))
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/threads/%s/messages", os.Getenv("OPENAI_API_URL"), threadID), bytes.NewBuffer(body))
 	if err != nil {
 		return fmt.Errorf("error creating request: %v", err)
 	}
@@ -291,16 +288,18 @@ func (s *OpenAIAssistantService) SendMessageToThread(threadID, message string) e
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to send message to thread, status code: %d", resp.StatusCode)
+		responseBody, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("failed to send messages to thread, status code: %d, response: %s", resp.StatusCode, string(responseBody))
 	}
 
 	return nil
 }
 
-func (s *OpenAIAssistantService) CreateRunForThread(threadID, assistantID string) (string, error) {
+func (s *OpenAIAssistantService) CreateRunForThreadWithConversation(threadID, assistantID string, conversation []map[string]interface{}) (string, error) {
 	// Estructura del cuerpo de la solicitud
 	data := map[string]interface{}{
-		"assistant_id": assistantID,
+		"assistant_id":        assistantID,
+		"additional_messages": conversation,
 	}
 
 	// Serializar el cuerpo de la solicitud
@@ -310,7 +309,7 @@ func (s *OpenAIAssistantService) CreateRunForThread(threadID, assistantID string
 	}
 
 	// Crear la solicitud HTTP
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s/threads/%s/runs", baseURL, threadID), bytes.NewBuffer(body))
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/threads/%s/runs", os.Getenv("OPENAI_API_URL"), threadID), bytes.NewBuffer(body))
 	if err != nil {
 		return "", fmt.Errorf("error creating request: %v", err)
 	}
@@ -337,7 +336,7 @@ func (s *OpenAIAssistantService) CreateRunForThread(threadID, assistantID string
 func (s *OpenAIAssistantService) WaitForRunCompletion(threadID, runID string, maxRetries int, retryInterval time.Duration) error {
 	for i := 0; i < maxRetries; i++ {
 		// Crear la solicitud HTTP para consultar el estado del run
-		req, err := http.NewRequest("GET", fmt.Sprintf("%s/threads/%s/runs/%s", baseURL, threadID, runID), nil)
+		req, err := http.NewRequest("GET", fmt.Sprintf("%s/threads/%s/runs/%s", os.Getenv("OPENAI_API_URL"), threadID, runID), nil)
 		if err != nil {
 			return fmt.Errorf("error creating request: %v", err)
 		}
@@ -362,6 +361,9 @@ func (s *OpenAIAssistantService) WaitForRunCompletion(threadID, runID string, ma
 		case "completed":
 			// Si está completado, retornar sin error
 			return nil
+		case "incomplete":
+			// Si está incomplete, retornar sin error
+			return nil
 		case "failed", "cancelled", "expired":
 			// Si el run falla o es cancelado, retornar error
 			return fmt.Errorf("run ended with status: %s", result.Status)
@@ -378,7 +380,7 @@ func (s *OpenAIAssistantService) WaitForRunCompletion(threadID, runID string, ma
 
 func (s *OpenAIAssistantService) GetMessagesFromThread(threadID string) (string, error) {
 	// Crear la solicitud HTTP
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/threads/%s/messages", baseURL, threadID), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/threads/%s/messages", os.Getenv("OPENAI_API_URL"), threadID), nil)
 	if err != nil {
 		return "", fmt.Errorf("error creating request: %v", err)
 	}
@@ -394,6 +396,7 @@ func (s *OpenAIAssistantService) GetMessagesFromThread(threadID string) (string,
 	var result struct {
 		Data []struct {
 			Role    string `json:"role"`
+			Id      string `json:"id"`
 			Content []struct {
 				Type string `json:"type"`
 				Text struct {
@@ -401,6 +404,7 @@ func (s *OpenAIAssistantService) GetMessagesFromThread(threadID string) (string,
 				} `json:"text"`
 			} `json:"content"`
 		} `json:"data"`
+		FirstId string `json:"first_id"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return "", fmt.Errorf("error decoding response: %v", err)
@@ -408,7 +412,7 @@ func (s *OpenAIAssistantService) GetMessagesFromThread(threadID string) (string,
 
 	// Buscar el último mensaje del asistente
 	for i := len(result.Data) - 1; i >= 0; i-- {
-		if result.Data[i].Role == "assistant" {
+		if result.Data[i].Role == "assistant" && result.Data[i].Id == result.FirstId {
 			for _, content := range result.Data[i].Content {
 				if content.Type == "text" {
 					return content.Text.Value, nil
@@ -425,7 +429,7 @@ func (s *OpenAIAssistantService) CreateThread(model, instructions string) (strin
 	// Estructura del cuerpo de la solicitud
 
 	// Crear la solicitud HTTP
-	req, err := http.NewRequest("POST", baseURL+"/threads", nil)
+	req, err := http.NewRequest("POST", os.Getenv("OPENAI_API_URL")+"/threads", nil)
 	if err != nil {
 		return "", fmt.Errorf("error creating request: %v", err)
 	}

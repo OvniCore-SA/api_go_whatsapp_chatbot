@@ -4,6 +4,7 @@ import (
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/services"
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 )
 
 type NumberPhonesController struct {
@@ -39,12 +40,39 @@ func (controller *NumberPhonesController) GetById(c *fiber.Ctx) error {
 
 func (controller *NumberPhonesController) Create(c *fiber.Ctx) error {
 	var dto dtos.NumberPhoneDto
+	// Parseo del cuerpo de la solicitud
 	if err := c.BodyParser(&dto); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
 			"message": err.Error(),
 		})
 	}
+
+	// Intentar generar un UUID único
+	var uniqueUUID string
+	for {
+		// Generar un nuevo UUID
+		uniqueUUID = uuid.New().String()
+
+		// Verificar si el UUID ya existe en la base de datos
+		exists, err := controller.service.UUIDExists(uniqueUUID)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"status":  "error",
+				"message": err.Error(),
+			})
+		}
+
+		// Si el UUID no existe, salir del bucle
+		if !exists {
+			break
+		}
+	}
+
+	// Asignar el UUID único al DTO
+	dto.UUID = uniqueUUID
+
+	// Llamada al servicio para crear el número de teléfono
 	err := controller.service.Create(dto)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -54,7 +82,7 @@ func (controller *NumberPhonesController) Create(c *fiber.Ctx) error {
 	}
 	return c.JSON(fiber.Map{
 		"status":  "success",
-		"message": "Item created successfully",
+		"message": "Number phone created successfully",
 	})
 }
 

@@ -49,3 +49,7 @@ func (s *NumberPhonesService) Update(id string, dto dtos.NumberPhoneDto) error {
 func (s *NumberPhonesService) Delete(id string) error {
 	return s.repository.Delete(id)
 }
+
+func (s *NumberPhonesService) UUIDExists(uuid string) (bool, error) {
+	return s.repository.UUIDExists(uuid)
+}
