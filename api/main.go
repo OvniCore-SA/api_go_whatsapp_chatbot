@@ -44,6 +44,15 @@ func main() {
 		log.Fatal("Error initializing MinIO client:", err)
 	}
 
+	// Telegram
+	instanceTelegram := services.InstanceTelegram{
+		TelegramBotRunning: false,
+		InstanceBot:        nil,
+		Bot:                nil,
+	}
+	// Funcion para que se escuchen los eventos de Telegram
+	go services.RunTelegramGoRoutine(&instanceTelegram)
+
 	// Instancio api de OPEN AI
 	OpenAIAssistantClient := services.NewOpenAIAssistantService(os.Getenv("OPENAI_API_KEY"))
 
