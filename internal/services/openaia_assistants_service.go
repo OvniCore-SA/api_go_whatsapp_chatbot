@@ -47,6 +47,7 @@ func (s *OpenAIAssistantService) doRequest(req *http.Request) (*http.Response, e
 func (s *OpenAIAssistantService) CreateAssistant(name, instructions, model, vectorStoreID string) (string, error) {
 	data := map[string]interface{}{
 		"instructions": instructions,
+		"name":         name,
 		"tools": []map[string]string{
 			{"type": "file_search"},
 		},
@@ -64,6 +65,40 @@ func (s *OpenAIAssistantService) CreateAssistant(name, instructions, model, vect
 		return "", err
 	}
 
+	resp, err := s.doRequest(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		ID string `json:"id"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", err
+	}
+
+	return result.ID, nil
+}
+
+// EditAssistant edita un asistente existente
+func (s *OpenAIAssistantService) EditAssistant(assistantID, name, instructions, model, vectorStoreID string) (string, error) {
+	data := map[string]interface{}{
+		"instructions": instructions,
+		"name":         name,
+		"tools": []map[string]string{
+			{"type": "file_search"},
+		},
+		"model": model,
+	}
+
+	body, _ := json.Marshal(data)
+	req, err := http.NewRequest("POST", os.Getenv("OPENAI_API_URL")+"/assistants/"+assistantID, bytes.NewBuffer(body))
+	if err != nil {
+		return "", err
+	}
+
+	// Enviar la solicitud
 	resp, err := s.doRequest(req)
 	if err != nil {
 		return "", err

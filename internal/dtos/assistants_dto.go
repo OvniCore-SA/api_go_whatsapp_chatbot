@@ -39,8 +39,8 @@ func (dto *AssistantDto) ValidateAssistantDto(isCreate bool) error {
 		return errors.New("el modelo no debe exceder los 50 caracteres")
 	}
 
-	if dto.Instructions != "" && len(dto.Instructions) > 1000 {
-		return errors.New("las instrucciones no deben exceder los 1000 caracteres")
+	if dto.Instructions != "" && len(dto.Instructions) > 5000 {
+		return errors.New("las instrucciones no deben exceder los 5000 caracteres")
 	}
 
 	if len(dto.Instructions) < 10 {

@@ -136,6 +136,8 @@ func (m *AssistantService) CreateAssistantWithFile(data dtos.AssistantDto, fileH
 		return dtos.AssistantDto{}, err
 	}
 
+	data.ID = assistantDB.ID
+
 	return data, nil
 }
 
@@ -193,6 +195,16 @@ func (s *AssistantService) FindAssistantById(id int64) (dtos.AssistantDto, error
 }
 
 func (s *AssistantService) UpdateAssistant(id int64, data dtos.AssistantDto) (dtos.AssistantDto, error) {
+	files, err := s.serviceFile.GetFileByAssistantID(id)
+	if err != nil {
+		return dtos.AssistantDto{}, errors.New("failed to find files with assistantID")
+	}
+	// Actualizo los datos del assistant en OPEN AI
+	_, err = s.openAIAssistantService.EditAssistant(data.OpenaiAssistantsID, data.Name, data.Instructions, os.Getenv("OPENAI_MODEL_USE"), files[0].OpenaiVectorStoreIDs)
+	if err != nil {
+		return dtos.AssistantDto{}, err
+	}
+
 	assistant := entities.MapDtoToAssistant(data)
 	if err := s.repository.Update(id, assistant); err != nil {
 		return dtos.AssistantDto{}, errors.New("assistant not found")
@@ -251,6 +263,12 @@ func (s *AssistantService) UpdateAssistantWithFile(id int64, data dtos.Assistant
 
 	// Luego de hacer todas las operaciones anteriores con respecto al file y de haber creado y asociado el nuevo, procedo a eliminar de la DB
 	err = s.serviceFile.DeleteFile(files[0].ID)
+	if err != nil {
+		return dtos.AssistantDto{}, err
+	}
+
+	// Actualizo los datos del assistant en OPEN AI
+	_, err = s.openAIAssistantService.EditAssistant(data.OpenaiAssistantsID, data.Name, data.Instructions, os.Getenv("OPENAI_MODEL_USE"), files[0].OpenaiVectorStoreIDs)
 	if err != nil {
 		return dtos.AssistantDto{}, err
 	}
