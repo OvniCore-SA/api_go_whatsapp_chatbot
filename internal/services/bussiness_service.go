@@ -22,12 +22,15 @@ func (s *BussinessService) CreateBussiness(data dtos.BussinessDto) (dtos.Bussine
 	bussiness := entities.MapDtoToBussiness(data)
 
 	// Llamar al repositorio para crear el negocio
-	if err := s.repository.Create(bussiness); err != nil {
+	idBussiness, err := s.repository.Create(bussiness)
+	if err != nil {
 		return dtos.BussinessDto{}, err
 	}
 
+	bussinessDTO := entities.MapEntitiesToBussinessDto(bussiness)
+	bussinessDTO.ID = int64(idBussiness)
 	// Devolver el DTO del negocio creado
-	return entities.MapEntitiesToBussinessDto(bussiness), nil
+	return bussinessDTO, nil
 }
 
 // Obtener un negocio por ID

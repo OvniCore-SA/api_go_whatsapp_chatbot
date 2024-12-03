@@ -15,9 +15,13 @@ func NewBussinessRepository(db *gorm.DB) *BussinessRepository {
 	return &BussinessRepository{db: db}
 }
 
-// Create inserts a new bussiness record into the database
-func (r *BussinessRepository) Create(record entities.Bussines) error {
-	return r.db.Create(&record).Error
+// Create inserts a new bussiness record into the database and returns the ID
+func (r *BussinessRepository) Create(record entities.Bussines) (uint, error) {
+	if err := r.db.Create(&record).Error; err != nil {
+		return 0, err // Si ocurre un error, devolver el valor cero y el error
+	}
+
+	return uint(record.ID), nil // Devolver el ID del registro creado
 }
 
 // FindByID retrieves a bussiness record by its ID
