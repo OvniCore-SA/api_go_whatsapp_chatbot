@@ -216,7 +216,7 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 	return nil
 }
 
-func (s *WhatsappService) InteractWithAssistant(assistantID, threadID, message string) (string, error) {
+func (s *WhatsappService) InteractWithAssistant(threadID, assistantID, message string) (string, error) {
 	// Crear un run para el thread con la conversación completa
 	err := s.openAIAssistantService.SendMessageToThread(threadID, message, true)
 	if err != nil {
