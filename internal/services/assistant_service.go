@@ -116,7 +116,7 @@ func (m *AssistantService) CreateAssistantWithFile(data dtos.AssistantDto, fileH
 	}
 
 	// Crear el asistente en OpenAI
-	assistantID, err := m.openAIAssistantService.CreateAssistant(data.Name, data.Instructions, os.Getenv("OPENAI_MODEL_USE"), vectorStoreID)
+	assistantID, err := m.openAIAssistantService.CreateAssistant(data.Name, data.Instructions, data.Model, vectorStoreID)
 	if err != nil {
 		return dtos.AssistantDto{}, err
 	}
@@ -200,7 +200,7 @@ func (s *AssistantService) UpdateAssistant(id int64, data dtos.AssistantDto) (dt
 		return dtos.AssistantDto{}, errors.New("failed to find files with assistantID")
 	}
 	// Actualizo los datos del assistant en OPEN AI
-	_, err = s.openAIAssistantService.EditAssistant(data.OpenaiAssistantsID, data.Name, data.Instructions, os.Getenv("OPENAI_MODEL_USE"), files[0].OpenaiVectorStoreIDs)
+	_, err = s.openAIAssistantService.EditAssistant(data.OpenaiAssistantsID, data.Name, data.Instructions, data.Model, files[0].OpenaiVectorStoreIDs)
 	if err != nil {
 		return dtos.AssistantDto{}, err
 	}
@@ -268,7 +268,7 @@ func (s *AssistantService) UpdateAssistantWithFile(id int64, data dtos.Assistant
 	}
 
 	// Actualizo los datos del assistant en OPEN AI
-	_, err = s.openAIAssistantService.EditAssistant(data.OpenaiAssistantsID, data.Name, data.Instructions, os.Getenv("OPENAI_MODEL_USE"), files[0].OpenaiVectorStoreIDs)
+	_, err = s.openAIAssistantService.EditAssistant(data.OpenaiAssistantsID, data.Name, data.Instructions, data.Model, files[0].OpenaiVectorStoreIDs)
 	if err != nil {
 		return dtos.AssistantDto{}, err
 	}

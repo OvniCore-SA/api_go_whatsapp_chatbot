@@ -220,7 +220,7 @@ func (s *WhatsappService) InteractWithAssistant(threadID, assistantID, message s
 	// Crear un run para el thread con la conversación completa
 	err := s.openAIAssistantService.SendMessageToThread(threadID, message, true)
 	if err != nil {
-		return "", fmt.Errorf("error creating run with conversation: %v", err)
+		return "", fmt.Errorf("error creating message with conversation: %v", err)
 	}
 
 	runID, err := s.openAIAssistantService.CreateRunForThreadWithConversation(threadID, assistantID, nil)
@@ -285,7 +285,7 @@ func (s *WhatsappService) NotifyInteractions(assistantIDDB int64, threadID strin
 		}
 		fmt.Print(conversation.String())
 		// Interactuar con el asistente
-		response, err := s.InteractWithAssistant(assistantIDGpt.Value, threadIDGpt.Value, conversation.String())
+		response, err := s.InteractWithAssistant(threadIDGpt.Value, assistantIDGpt.Value, conversation.String())
 		if err != nil {
 			return fmt.Errorf("error interacting with assistant: %v", err)
 		}
@@ -311,7 +311,7 @@ func (s *WhatsappService) NotifyInteractions(assistantIDDB int64, threadID strin
 	}
 
 	// Enviar notificaciones a los números designados
-	/* 	for _, summary := range interactionSummaries {
+	for _, summary := range interactionSummaries {
 		var message strings.Builder
 		message.WriteString("Estos usuarios pidieron una reunión:\n")
 		for _, contact := range summary.Contacts {
@@ -319,11 +319,11 @@ func (s *WhatsappService) NotifyInteractions(assistantIDDB int64, threadID strin
 		}
 		message.WriteString("\nPor favor coordina una reunión a convenir con el usuario.")
 
-		err := s.SendWhatsappNotification(summary.NumberPhone, message.String())
-		if err != nil {
-			return fmt.Errorf("error sending WhatsApp notification: %v", err)
-		}
-	} */
+		// err := s.SendWhatsappNotification(summary.NumberPhone, message.String())
+		// if err != nil {
+		// 	return fmt.Errorf("error sending WhatsApp notification: %v", err)
+		// }
+	}
 
 	return nil
 }
