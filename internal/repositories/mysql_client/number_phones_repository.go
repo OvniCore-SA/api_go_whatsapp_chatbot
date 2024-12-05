@@ -2,6 +2,7 @@ package mysql_client
 
 import (
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities"
+	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities/filters"
 	"gorm.io/gorm"
 )
 
@@ -41,6 +42,12 @@ func (r *NumberPhonesRepository) Delete(id string) error {
 func (r *NumberPhonesRepository) List() ([]entities.NumberPhone, error) {
 	var records []entities.NumberPhone
 	err := r.db.Find(&records).Error
+	return records, err
+}
+
+func (r *NumberPhonesRepository) ListByFilter(filter filters.AssistantsFiltro) ([]entities.NumberPhone, error) {
+	var records []entities.NumberPhone
+	err := r.db.Where("number_phone_to_notify > ?", 0).Find(&records).Error
 	return records, err
 }
 

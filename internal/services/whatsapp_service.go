@@ -17,13 +17,14 @@ import (
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos/whatsapp"
 	metaapi "github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos/whatsapp/metaApi"
+	whatsappservicedto "github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos/whatsapp_service_DTO"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities"
+	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities/filters"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/repositories/mysql_client"
 )
 
 type WhatsappService struct {
 	usersService           *UsersService
-	prompsService          *PrompsService
 	logsService            *LogsService
 	openAIAssistantService *OpenAIAssistantService
 	utilService            *UtilService
@@ -31,12 +32,12 @@ type WhatsappService struct {
 	numberPhone            *NumberPhonesService
 	messagesRepository     *mysql_client.MessagesRepository
 	assistantService       *AssistantService
+	configurationService   *ConfigurationsService
 }
 
-func NewWhatsappService(usersService *UsersService, prompsService *PrompsService, logsService *LogsService, openAIAssistantService *OpenAIAssistantService, utilService *UtilService, numberPhone *NumberPhonesService, messagesRepository *mysql_client.MessagesRepository, assistantService *AssistantService) *WhatsappService {
+func NewWhatsappService(usersService *UsersService, logsService *LogsService, openAIAssistantService *OpenAIAssistantService, utilService *UtilService, numberPhone *NumberPhonesService, messagesRepository *mysql_client.MessagesRepository, assistantService *AssistantService, configurationService *ConfigurationsService) *WhatsappService {
 	return &WhatsappService{
 		usersService:           usersService,
-		prompsService:          prompsService,
 		logsService:            logsService,
 		openAIAssistantService: openAIAssistantService,
 		utilService:            utilService,
@@ -44,6 +45,7 @@ func NewWhatsappService(usersService *UsersService, prompsService *PrompsService
 		numberPhone:            numberPhone,
 		messagesRepository:     messagesRepository,
 		assistantService:       assistantService,
+		configurationService:   configurationService,
 	}
 }
 
@@ -177,27 +179,27 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 
 	// Guardar el mensaje del contacto en la base de datos
 	err = service.messagesRepository.Create(entities.Message{
-		AssistantsID: assistant.ID,
-		ContactsID:   contact.ID,
-		MessageText:  text,
-		IsFromBot:    false,
+		NumberPhonesID: numberPhone.ID,
+		ContactsID:     contact.ID,
+		MessageText:    text,
+		IsFromBot:      false,
 	})
 	if err != nil {
 		return fmt.Errorf("error saving contact message: %v", err)
 	}
 
 	// Enviar el mensaje a OpenAI
-	response, err := service.InteractWithAssistant(threadID, assistant.OpenaiAssistantsID, text, contact.ID, assistant.ID)
+	response, err := service.InteractWithAssistant(threadID, assistant.OpenaiAssistantsID, text)
 	if err != nil {
 		return fmt.Errorf("error sending message to OpenAI: %v", err)
 	}
 
 	// Guardar la respuesta del asistente en la base de datos
 	err = service.messagesRepository.Create(entities.Message{
-		AssistantsID: assistant.ID,
-		ContactsID:   contact.ID,
-		MessageText:  response,
-		IsFromBot:    true,
+		NumberPhonesID: numberPhone.ID,
+		ContactsID:     contact.ID,
+		MessageText:    response,
+		IsFromBot:      true,
 	})
 	if err != nil {
 		return fmt.Errorf("error saving assistant response: %v", err)
@@ -214,19 +216,7 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 	return nil
 }
 
-func (s *WhatsappService) InteractWithAssistant(threadID, assistantID, message string, contactDBID, assistantDBID int64) (string, error) {
-	// Obtenemos la ultima conversacion del usuario con el assistant
-	// conversation, err := s.getConversationHistory(assistantDBID, contactDBID)
-	// if err != nil {
-	// 	return "", fmt.Errorf("error fetching conversation history: %v", err)
-	// }
-
-	// Agregar el nuevo mensaje al historial
-	// conversation = append(conversation, map[string]interface{}{
-	// 	"role":    "user",
-	// 	"content": message,
-	// })
-
+func (s *WhatsappService) InteractWithAssistant(assistantID, threadID, message string) (string, error) {
 	// Crear un run para el thread con la conversación completa
 	err := s.openAIAssistantService.SendMessageToThread(threadID, message, true)
 	if err != nil {
@@ -252,6 +242,97 @@ func (s *WhatsappService) InteractWithAssistant(threadID, assistantID, message s
 	}
 
 	return response, nil
+}
+
+func (s *WhatsappService) NotifyInteractions(assistantIDDB int64, threadID string) error {
+	// Obtener los números de teléfono asociados al asistente
+	filter := filters.AssistantsFiltro{
+		NumberPhoneToNotifyNotEmpty: true,
+	}
+	numbers, err := s.numberPhone.GetByFilter(filter)
+	if err != nil {
+		return fmt.Errorf("error retrieving numbers: %v", err)
+	}
+
+	var interactionSummaries []whatsappservicedto.InteractionSummary
+
+	for _, number := range numbers {
+		// Filtrar mensajes de las últimas 6 horas
+		sixHoursAgo := time.Now().Add(-6 * time.Hour)
+		messages, err := s.messagesRepository.GetMessagesByNumber(number.ID, sixHoursAgo)
+		if err != nil {
+			return fmt.Errorf("error retrieving messages: %v", err)
+		}
+
+		// Construir el mensaje para el asistente
+		var conversation strings.Builder
+		for _, message := range messages {
+			quienEnvioMensaje := "usuario"
+			if message.IsFromBot {
+				quienEnvioMensaje = "assistente"
+			}
+			conversation.WriteString(fmt.Sprintf("Emisor: %s, Mensaje: %s\n", quienEnvioMensaje, message.MessageText))
+		}
+		conversation.WriteString("\n¿El usuario envió su teléfono y correo electrónico? Responde solo en el siguiente formato:\n\ntelefono\nemail")
+
+		assistantIDGpt, err := s.configurationService.FindByKey("ASSISTANT_NOTIFY_CLIENTS")
+		if err != nil {
+			return fmt.Errorf("error retrieving assistant ID: %v", err)
+		}
+		threadIDGpt, err := s.configurationService.FindByKey("THREAD_NOTIFY_CLIENTS")
+		if err != nil {
+			return fmt.Errorf("error retrieving thread ID: %v", err)
+		}
+		fmt.Print(conversation.String())
+		// Interactuar con el asistente
+		response, err := s.InteractWithAssistant(assistantIDGpt.Value, threadIDGpt.Value, conversation.String())
+		if err != nil {
+			return fmt.Errorf("error interacting with assistant: %v", err)
+		}
+
+		//response := "3872937497\nemanuel.garcia@ovnix.com"
+
+		// Procesar la respuesta
+		lines := strings.Split(response, "\n")
+		if len(lines) < 2 {
+			continue
+		}
+		contactInfo := whatsappservicedto.UserContactInfo{
+			Telefono: lines[0],
+			Email:    lines[1],
+		}
+
+		// Agregar la interacción al resumen
+		interactionSummaries = append(interactionSummaries, whatsappservicedto.InteractionSummary{
+			NumberPhoneID: number.ID,
+			NumberPhone:   number.NumberPhone,
+			Contacts:      []whatsappservicedto.UserContactInfo{contactInfo},
+		})
+	}
+
+	// Enviar notificaciones a los números designados
+	/* 	for _, summary := range interactionSummaries {
+		var message strings.Builder
+		message.WriteString("Estos usuarios pidieron una reunión:\n")
+		for _, contact := range summary.Contacts {
+			message.WriteString(fmt.Sprintf("%s, %s\n", contact.Telefono, contact.Email))
+		}
+		message.WriteString("\nPor favor coordina una reunión a convenir con el usuario.")
+
+		err := s.SendWhatsappNotification(summary.NumberPhone, message.String())
+		if err != nil {
+			return fmt.Errorf("error sending WhatsApp notification: %v", err)
+		}
+	} */
+
+	return nil
+}
+
+func (s *AssistantService) SendWhatsappNotification(number int64, message string) error {
+	// Lógica para enviar notificaciones por WhatsApp
+	// Puedes usar Baileys o la API que tengas configurada para este propósito
+	fmt.Printf("Enviando mensaje a %d: %s\n", number, message)
+	return nil
 }
 
 func (s *WhatsappService) getConversationHistory(assistantID, contactID int64) ([]map[string]interface{}, error) {

@@ -3,6 +3,7 @@ package services
 import (
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities"
+	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities/filters"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/repositories/mysql_client"
 )
 
@@ -26,6 +27,36 @@ func (s *NumberPhonesService) GetAll() ([]dtos.NumberPhoneDto, error) {
 	}
 
 	return dtos, nil
+}
+
+func (s *NumberPhonesService) GetByFilter(filter filters.AssistantsFiltro) ([]dtos.NumberPhoneDto, error) {
+	records, err := s.repository.ListByFilter(filter)
+	if err != nil {
+		return nil, err
+	}
+
+	dtos := make([]dtos.NumberPhoneDto, len(records))
+	for i, record := range records {
+		dtos[i] = entities.MapEntityToNumberPhoneDto(record)
+	}
+
+	return dtos, nil
+}
+
+func (s *NumberPhonesService) GetNumbersByAssistantID(assistantID int64) ([]dtos.NumberPhoneDto, error) {
+	// Obtener los registros desde el repositorio
+	records, err := s.repository.FindByAssistantID(assistantID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Mapear los registros a DTOs
+	numberPhoneDtos := make([]dtos.NumberPhoneDto, len(records))
+	for i, record := range records {
+		numberPhoneDtos[i] = entities.MapEntityToNumberPhoneDto(record)
+	}
+
+	return numberPhoneDtos, nil
 }
 
 func (s *NumberPhonesService) GetById(id string) (dtos.NumberPhoneDto, error) {

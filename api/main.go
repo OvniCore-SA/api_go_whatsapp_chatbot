@@ -63,9 +63,6 @@ func main() {
 	UsersRepository := mysql_client.NewUsersRepository(db)
 	UsersService := services.NewUsersService(UsersRepository, RolesService)
 	UsersController := controllers.NewUsersController(UsersService)
-	PrompsRepository := mysql_client.NewPrompsRepository(db)
-	PrompsService := services.NewPrompsService(PrompsRepository)
-	PrompsController := controllers.NewPrompsController(PrompsService)
 	LogsRepository := mysql_client.NewLogsRepository(db)
 	LogsService := services.NewLogsService(LogsRepository)
 	LogsController := controllers.NewLogsController(LogsService)
@@ -84,10 +81,12 @@ func main() {
 	FileRepository := mysql_client.NewFileRepository(db)
 	FileService := services.NewFileService(FileRepository, minioClient)
 	FileController := controllers.NewFileController(FileService)
+	ConfigurationRepository := mysql_client.NewConfigurationsRepository(db)
+	ConfigurationService := services.NewConfigurationsService(ConfigurationRepository)
 	AssistantRepository := mysql_client.NewAssistantRepository(db)
 	AssistantService := services.NewAssistantService(AssistantRepository, FileService, OpenAIAssistantClient)
 	AssistantController := controllers.NewAssistantController(AssistantService)
-	WhatsappService := services.NewWhatsappService(UsersService, PrompsService, LogsService, OpenAIAssistantClient, UtilService, NumberPhonesService, MessageRepository, AssistantService)
+	WhatsappService := services.NewWhatsappService(UsersService, LogsService, OpenAIAssistantClient, UtilService, NumberPhonesService, MessageRepository, AssistantService, ConfigurationService)
 	WhatsappController := controllers.NewWhatsappController(WhatsappService)
 	BussinessRepository := mysql_client.NewBussinessRepository(db)
 	BussinessService := services.NewBussinessService(BussinessRepository)
@@ -113,7 +112,7 @@ func main() {
 	}))
 
 	// Configuración de TODAS las rutas
-	routes.Setup(app, &meddlewares, AuthController, FileController, AssistantController, BussinessController, UsersController, PrompsController, LogsController, Password_resetsController, RolesController, PermissionsController, WhatsappController, NumberPhonesController)
+	routes.Setup(app, &meddlewares, AuthController, FileController, AssistantController, BussinessController, UsersController, LogsController, Password_resetsController, RolesController, PermissionsController, WhatsappController, NumberPhonesController)
 
 	log.Fatal(app.Listen(":" + os.Getenv("APP_PORT")))
 }

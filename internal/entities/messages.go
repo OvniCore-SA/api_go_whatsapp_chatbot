@@ -8,38 +8,38 @@ import (
 )
 
 type Message struct {
-	ID           int64          `gorm:"primaryKey;autoIncrement"`
-	AssistantsID int64          `gorm:"not null"`                                                              // Clave foránea hacia Assistant
-	Assistant    Assistant      `gorm:"foreignKey:AssistantsID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"` // Relación con Assistant
-	ContactsID   int64          `gorm:"not null"`                                                              // Clave foránea hacia Contact
-	Contact      Contact        `gorm:"foreignKey:ContactsID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`   // Relación con Contact
-	MessageText  string         `gorm:"type:text;not null"`                                                    // Texto del mensaje
-	IsFromBot    bool           `gorm:"not null"`                                                              // Indica si el mensaje fue enviado por el bot (Assistant)
-	CreatedAt    time.Time      `gorm:"not null;default:CURRENT_TIMESTAMP"`                                    // Fecha de creación
-	UpdatedAt    time.Time      `gorm:"not null;default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"`        // Fecha de última actualización
-	DeletedAt    gorm.DeletedAt `gorm:"index"`                                                                 // Soft delete
+	ID             int64          `gorm:"primaryKey;autoIncrement"`
+	NumberPhonesID int64          `gorm:"not null"`                                                                // Clave foránea hacia Assistant
+	NumberPhone    NumberPhone    `gorm:"foreignKey:NumberPhonesID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"` // Relación con Assistant
+	ContactsID     int64          `gorm:"not null"`                                                                // Clave foránea hacia Contact
+	Contact        Contact        `gorm:"foreignKey:ContactsID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`     // Relación con Contact
+	MessageText    string         `gorm:"type:text;not null"`                                                      // Texto del mensaje
+	IsFromBot      bool           `gorm:"not null"`                                                                // Indica si el mensaje fue enviado por el bot (Assistant)
+	CreatedAt      time.Time      `gorm:"not null;default:CURRENT_TIMESTAMP"`                                      // Fecha de creación
+	UpdatedAt      time.Time      `gorm:"not null;default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"`          // Fecha de última actualización
+	DeletedAt      gorm.DeletedAt `gorm:"index"`                                                                   // Soft delete
 }
 
 func MapEntityToMessageDto(entity Message) dtos.MessageDto {
 	return dtos.MessageDto{
-		ID:           entity.ID,
-		AssistantsID: entity.AssistantsID,
-		ContactsID:   entity.ContactsID,
-		MessageText:  entity.MessageText,
-		IsFromBot:    entity.IsFromBot,
-		CreatedAt:    entity.CreatedAt,
-		UpdatedAt:    entity.UpdatedAt,
+		ID:             entity.ID,
+		NumberPhonesID: entity.NumberPhonesID,
+		ContactsID:     entity.ContactsID,
+		MessageText:    entity.MessageText,
+		IsFromBot:      entity.IsFromBot,
+		CreatedAt:      entity.CreatedAt,
+		UpdatedAt:      entity.UpdatedAt,
 	}
 }
 
 func MapDtoToMessage(dto dtos.MessageDto) Message {
 	return Message{
-		ID:           dto.ID,
-		AssistantsID: dto.AssistantsID,
-		ContactsID:   dto.ContactsID,
-		MessageText:  dto.MessageText,
-		IsFromBot:    dto.IsFromBot,
-		CreatedAt:    dto.CreatedAt,
-		UpdatedAt:    dto.UpdatedAt,
+		ID:             dto.ID,
+		NumberPhonesID: dto.NumberPhonesID,
+		ContactsID:     dto.ContactsID,
+		MessageText:    dto.MessageText,
+		IsFromBot:      dto.IsFromBot,
+		CreatedAt:      dto.CreatedAt,
+		UpdatedAt:      dto.UpdatedAt,
 	}
 }

@@ -30,16 +30,16 @@ func SendMessageTelegram(SendMessageTelegramRequest SendMessageTelegramRequest, 
 		// Si por alguna razon no hay una instancia corriendo, se crea nuevamente la instancia.
 		api, me, err := telegrambot.NewAPI(os.Getenv("TOKEN_BOT_TELEGRAM"))
 		if err != nil {
-			err = fmt.Errorf("Error: %v", err)
 			fmt.Println(err.Error())
 		}
 		instanceTelegram.TelegramBotRunning = true
 		instanceTelegram.InstanceBot = api
 		instanceTelegram.Bot = me
 	}
+
 	go func() {
 		// Enviar la mensaje
-		err := sendMessage(instanceTelegram.InstanceBot, instanceTelegram.Bot, SendMessageTelegramRequest)
+		err := uploadConfigAndsendMessage(instanceTelegram.InstanceBot, instanceTelegram.Bot, SendMessageTelegramRequest)
 		if err != nil {
 			fmt.Println("Error:" + err.Error())
 		}
@@ -47,7 +47,7 @@ func SendMessageTelegram(SendMessageTelegramRequest SendMessageTelegramRequest, 
 
 }
 
-func sendMessage(api *telegrambot.API, me *telegrambot.User, requestSendMessage SendMessageTelegramRequest) (err error) {
+func uploadConfigAndsendMessage(api *telegrambot.API, me *telegrambot.User, requestSendMessage SendMessageTelegramRequest) (err error) {
 	dtoIstanceTelegram := InstanceTelegram{
 		TelegramBotRunning: true,
 		InstanceBot:        api,
@@ -57,7 +57,7 @@ func sendMessage(api *telegrambot.API, me *telegrambot.User, requestSendMessage 
 	if len(requestSendMessage.ChatIDs) > 0 {
 		for _, chatID := range requestSendMessage.ChatIDs {
 			chatId := telegrambot.ChatID(chatID)
-			err = SendMessageTelegrams(requestSendMessage.Message, &chatId, &dtoIstanceTelegram)
+			err = sendMessage(requestSendMessage.Message, &chatId, &dtoIstanceTelegram)
 			if requestSendMessage.ChatID == int64(chatID) {
 				requestSendMessage.ChatID = 0
 			}
@@ -69,7 +69,7 @@ func sendMessage(api *telegrambot.API, me *telegrambot.User, requestSendMessage 
 
 	if requestSendMessage.ChatID > 0 {
 		chatId := telegrambot.ChatID(requestSendMessage.ChatID)
-		err = SendMessageTelegrams(requestSendMessage.Message, &chatId, &dtoIstanceTelegram)
+		err = sendMessage(requestSendMessage.Message, &chatId, &dtoIstanceTelegram)
 		if err != nil {
 			fmt.Println(err.Error())
 			return
@@ -79,7 +79,7 @@ func sendMessage(api *telegrambot.API, me *telegrambot.User, requestSendMessage 
 	return
 }
 
-func SendMessageTelegrams(messsage string, chatId *telegrambot.ChatID, instancetelegram *InstanceTelegram) (err error) {
+func sendMessage(messsage string, chatId *telegrambot.ChatID, instancetelegram *InstanceTelegram) (err error) {
 	_, err = instancetelegram.InstanceBot.SendMessage(&telegrambot.SendMessageParams{
 		ChatID: chatId,
 		Text:   fmt.Sprintf(messsage),

@@ -13,6 +13,7 @@ type NumberPhone struct {
 	Assistant             Assistant `gorm:"foreignKey:AssistantsID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"` // Relación con Assistant
 	NumberPhone           int64     `gorm:"not null"`
 	UUID                  string    `gorm:"not null;unique"`
+	NumberPhoneToNotify   int64     `gorm:"default:0"`
 	TokenPermanent        string    `gorm:"not null;unique"`
 	WhatsappNumberPhoneId int64     `gorm:"not null;unique"`
 	Active                bool      `gorm:"default:false"`             // Activo cuando el usuario escanea con éxito el QR
@@ -30,6 +31,7 @@ func MapEntityToNumberPhoneDto(entity NumberPhone) dtos.NumberPhoneDto {
 		NumberPhone:           entity.NumberPhone,
 		UUID:                  entity.UUID,
 		TokenPermanent:        entity.TokenPermanent,
+		NumberPhoneToNotify:   entity.NumberPhoneToNotify,
 		WhatsappNumberPhoneId: entity.AssistantsID,
 		Active:                entity.Active,
 	}
@@ -41,6 +43,7 @@ func MapDtoToNumberPhone(dto dtos.NumberPhoneDto) NumberPhone {
 		AssistantsID:          dto.AssistantsID,
 		NumberPhone:           dto.NumberPhone,
 		UUID:                  dto.UUID,
+		NumberPhoneToNotify:   dto.NumberPhoneToNotify,
 		TokenPermanent:        dto.TokenPermanent,
 		WhatsappNumberPhoneId: dto.WhatsappNumberPhoneId,
 		Active:                dto.Active,

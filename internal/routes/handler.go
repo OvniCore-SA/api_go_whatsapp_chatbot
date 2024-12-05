@@ -13,7 +13,6 @@ func Setup(app *fiber.App,
 	AssistantController *controllers.AssistantController,
 	BussinessController *controllers.BussinessController,
 	UsersController *controllers.UsersController,
-	PrompsController *controllers.PrompsController,
 	LogsController *controllers.LogsController,
 	Password_resetsController *controllers.Password_resetsController,
 	RolesController *controllers.RolesController,
@@ -61,6 +60,7 @@ func Setup(app *fiber.App,
 
 	api.Get("/webhook", WhatsappController.GetWhatsapp)
 	api.Post("/webhook", WhatsappController.PostWhatsapp)
+	api.Post("/notificar-datos-clientes", middleware.ValidarApikey(), WhatsappController.DemoNotifyInteractions)
 	api.Post("/send-message-basic", middleware.ValidarApikey(), WhatsappController.PostSendMessageWhatsapp)
 
 	api.Get("/logs", middleware.ValidarApikey(), LogsController.GetAll)

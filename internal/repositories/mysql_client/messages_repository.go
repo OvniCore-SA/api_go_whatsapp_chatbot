@@ -29,6 +29,17 @@ func (r *MessagesRepository) GetMessagesByAssistantAndContact(assistantID, conta
 	return messages, err
 }
 
+// GetMessagesByNumber retrieves all messages associated with a specific number within a given time range
+func (r *MessagesRepository) GetMessagesByNumber(numberID int64, since time.Time) ([]entities.Message, error) {
+	var messages []entities.Message
+	err := r.db.Where("number_phones_id = ? AND created_at >= ?", numberID, since).Order("created_at ASC").Preload("Contact").Find(&messages).Error
+
+	if err != nil {
+		return nil, err
+	}
+	return messages, nil
+}
+
 func (r *MessagesRepository) GetConversation(assistantID, contactID int64, sinceMinutes int) ([]entities.Message, error) {
 	var messages []entities.Message
 	query := r.db.Where("assistants_id = ? AND contacts_id = ?", assistantID, contactID).Order("created_at ASC")
