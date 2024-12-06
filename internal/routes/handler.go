@@ -34,11 +34,11 @@ func Setup(app *fiber.App,
 	api.Get("/assistants/getAssistantsByBussiness/:id", middleware.ValidarApikey(), AssistantController.GetAllAssistantsByBussinessId)
 	api.Delete("/assistants/:id", middleware.ValidarApikey(), AssistantController.DeleteAssistant)
 
-	app.Post("/files/create", middleware.ValidarApikey(), FileController.CreateFile)
-	app.Get("/files/", middleware.ValidarApikey(), FileController.GetAllFiles)
-	app.Get("/files/:id", middleware.ValidarApikey(), FileController.GetFileById)
-	app.Put("/files/:id", middleware.ValidarApikey(), FileController.UpdateFile)
-	app.Delete("/files/:id", middleware.ValidarApikey(), FileController.DeleteFile)
+	api.Post("/files/create", middleware.ValidarApikey(), FileController.CreateFile)
+	api.Get("/files/", middleware.ValidarApikey(), FileController.GetAllFiles)
+	api.Get("/files/:id", middleware.ValidarApikey(), FileController.GetFileById)
+	api.Put("/files/:id", middleware.ValidarApikey(), FileController.UpdateFile)
+	api.Delete("/files/:id", middleware.ValidarApikey(), FileController.DeleteFile)
 
 	api.Post("/login", AuthController.Login)
 	api.Post("/restore-password", AuthController.RestorePassword)
