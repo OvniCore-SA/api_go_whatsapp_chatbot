@@ -29,6 +29,10 @@ func (s *OpenAIAssistantService) doRequest(req *http.Request) (*http.Response, e
 	req.Header.Add("OpenAI-Beta", "assistants=v2")
 	req.Header.Add("Content-Type", "application/json")
 
+	// Construir una representación ofuscada del apiKey
+	maskedAPIKey := maskAPIKey(s.apiKey)
+	fmt.Printf("Usando API Key: %s\n", maskedAPIKey)
+
 	fmt.Println("Ejecutando endpoint: " + req.URL.Path)
 
 	resp, err := s.client.Do(req)
@@ -41,6 +45,17 @@ func (s *OpenAIAssistantService) doRequest(req *http.Request) (*http.Response, e
 	}
 
 	return resp, nil
+}
+
+// maskAPIKey ofusca una API Key mostrando solo los primeros y últimos caracteres
+func maskAPIKey(apiKey string) string {
+	if len(apiKey) <= 20 {
+		// Si la clave es muy corta, no hacer mucho
+		return apiKey
+	}
+	start := apiKey[:8]            // Primeros 4 caracteres
+	end := apiKey[len(apiKey)-12:] // Últimos 4 caracteres
+	return fmt.Sprintf("%s****%s", start, end)
 }
 
 // CreateAssistant crea un nuevo asistente con búsqueda de archivos activada
