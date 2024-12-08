@@ -3,6 +3,7 @@ package services
 import (
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/robfig/cron/v3"
 )
@@ -21,6 +22,9 @@ func NewAutoProcessService(whatsappService *WhatsappService) *AutoProcessService
 
 // Start inicia los procesos automáticos
 func (s *AutoProcessService) Start() error {
+	if os.Getenv("HOST_API") == "http://127.0.0.1:5001" {
+		return nil
+	}
 	c := cron.New()
 
 	// Programar tarea para las 11:00
