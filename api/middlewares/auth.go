@@ -30,6 +30,8 @@ func (m *MiddlewareManager) ValidarApikey() func(c *fiber.Ctx) error {
 		apiKey := c.Get("ApiKey")
 
 		if apiKey != os.Getenv("API_SYSTEM_KEY") {
+			fmt.Println(os.Getenv("API_SYSTEM_KEY"))
+			fmt.Println(apiKey)
 			err := fmt.Errorf("acceso denegado o permisos insuficientes")
 			return fiber.NewError(403, err.Error())
 		}

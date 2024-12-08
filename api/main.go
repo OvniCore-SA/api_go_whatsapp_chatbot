@@ -22,6 +22,7 @@ import (
 )
 
 func main() {
+
 	// Configurar zona horaria global
 	loc, err := time.LoadLocation("America/Argentina/Buenos_Aires")
 	if err != nil {
@@ -53,13 +54,16 @@ func main() {
 	}
 
 	// Telegram
-	instanceTelegram := services.InstanceTelegram{
+	InstanceTelegram := services.InstanceTelegram{
 		TelegramBotRunning: false,
 		InstanceBot:        nil,
 		Bot:                nil,
 	}
 	// Funcion para que se escuchen los eventos de Telegram
-	go services.RunTelegramGoRoutine(&instanceTelegram)
+	TelegramService := services.NewTelegramService()
+	TelegramController := controllers.NewTelegramController(TelegramService, &InstanceTelegram)
+
+	go TelegramService.RunTelegramGoRoutine(&InstanceTelegram)
 
 	// Instancio api de OPEN AI
 	OpenAIAssistantClient := services.NewOpenAIAssistantService(os.Getenv("OPENAI_API_KEY"))
@@ -130,7 +134,7 @@ func main() {
 	app.Use(meddlewares.SecureHeadersMiddleware())
 
 	// Configuración de TODAS las rutas
-	routes.Setup(app, &meddlewares, AuthController, FileController, AssistantController, BussinessController, UsersController, LogsController, Password_resetsController, RolesController, PermissionsController, WhatsappController, NumberPhonesController)
+	routes.Setup(app, &meddlewares, AuthController, FileController, AssistantController, BussinessController, UsersController, LogsController, Password_resetsController, RolesController, PermissionsController, WhatsappController, NumberPhonesController, TelegramController)
 
 	log.Fatal(app.Listen(":" + os.Getenv("APP_PORT")))
 }

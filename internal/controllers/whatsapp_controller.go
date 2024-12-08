@@ -78,7 +78,7 @@ func (controller *WhatsappController) GetWhatsapp(c *fiber.Ctx) error {
 
 func (controller *WhatsappController) DemoNotifyInteractions(c *fiber.Ctx) error {
 
-	err := controller.service.NotifyInteractions()
+	err := controller.service.NotifyInteractions(6)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(&fiber.Map{
 			"status":  false,

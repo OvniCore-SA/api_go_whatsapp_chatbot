@@ -23,7 +23,14 @@ type SendMessageTelegramRequest struct {
 	SistemaID   int64  `json:"sistema_id"`
 }
 
-func SendMessageTelegram(SendMessageTelegramRequest SendMessageTelegramRequest, instanceTelegram *InstanceTelegram) {
+type TelegramService struct {
+}
+
+func NewTelegramService() *TelegramService {
+	return &TelegramService{}
+}
+
+func (service *TelegramService) SendMessageTelegram(SendMessageTelegramRequest SendMessageTelegramRequest, instanceTelegram *InstanceTelegram) {
 	if !instanceTelegram.TelegramBotRunning {
 		fmt.Println("¡ No hay una instancia de Telegram ejecutandose !")
 		fmt.Println("EJECUTANDO NUEVA INSTANCIA...")
@@ -39,7 +46,7 @@ func SendMessageTelegram(SendMessageTelegramRequest SendMessageTelegramRequest, 
 
 	go func() {
 		// Enviar la mensaje
-		err := uploadConfigAndsendMessage(instanceTelegram.InstanceBot, instanceTelegram.Bot, SendMessageTelegramRequest)
+		err := service.uploadConfigAndsendMessage(instanceTelegram.InstanceBot, instanceTelegram.Bot, SendMessageTelegramRequest)
 		if err != nil {
 			fmt.Println("Error:" + err.Error())
 		}
@@ -47,42 +54,30 @@ func SendMessageTelegram(SendMessageTelegramRequest SendMessageTelegramRequest, 
 
 }
 
-func uploadConfigAndsendMessage(api *telegrambot.API, me *telegrambot.User, requestSendMessage SendMessageTelegramRequest) (err error) {
+func (service *TelegramService) uploadConfigAndsendMessage(api *telegrambot.API, me *telegrambot.User, requestSendMessage SendMessageTelegramRequest) (err error) {
 	dtoIstanceTelegram := InstanceTelegram{
 		TelegramBotRunning: true,
 		InstanceBot:        api,
 		Bot:                me,
 	}
 
-	if len(requestSendMessage.ChatIDs) > 0 {
-		for _, chatID := range requestSendMessage.ChatIDs {
-			chatId := telegrambot.ChatID(chatID)
-			err = sendMessage(requestSendMessage.Message, &chatId, &dtoIstanceTelegram)
-			if requestSendMessage.ChatID == int64(chatID) {
-				requestSendMessage.ChatID = 0
-			}
-		}
-		if err != nil {
-			return
-		}
-	}
-
 	if requestSendMessage.ChatID > 0 {
 		chatId := telegrambot.ChatID(requestSendMessage.ChatID)
-		err = sendMessage(requestSendMessage.Message, &chatId, &dtoIstanceTelegram)
+		err = service.sendMessage(requestSendMessage.Message, &chatId, &dtoIstanceTelegram)
 		if err != nil {
 			fmt.Println(err.Error())
 			return
 		}
+		fmt.Println("Mensaje enviado con éxito a: ", chatId)
 	}
 
 	return
 }
 
-func sendMessage(messsage string, chatId *telegrambot.ChatID, instancetelegram *InstanceTelegram) (err error) {
+func (service *TelegramService) sendMessage(messsage string, chatId *telegrambot.ChatID, instancetelegram *InstanceTelegram) (err error) {
 	_, err = instancetelegram.InstanceBot.SendMessage(&telegrambot.SendMessageParams{
 		ChatID: chatId,
-		Text:   fmt.Sprintf(messsage),
+		Text:   messsage,
 		ReplyMarkup: &telegrambot.ReplyKeyboardMarkup{
 			Keyboard: [][]*telegrambot.KeyboardButton{{
 				{
@@ -97,17 +92,16 @@ func sendMessage(messsage string, chatId *telegrambot.ChatID, instancetelegram *
 	return
 }
 
-func RunTelegramGoRoutine(instancetelegram *InstanceTelegram) {
+func (service *TelegramService) RunTelegramGoRoutine(instancetelegram *InstanceTelegram) {
 	if instancetelegram.TelegramBotRunning {
 		fmt.Println("Ya esta corriendo una instancia de telegram. (InstanceBot ejecutado)")
-		err := fmt.Errorf("Ya esta corriendo una instancia de telegram.")
-		fmt.Println(err.Error())
+		fmt.Println("Ya esta corriendo una instancia de telegram.")
+		return
 	}
 
 	api, me, err := telegrambot.NewAPI(os.Getenv("TOKEN_BOT_TELEGRAM"))
 	if err != nil {
-		err = fmt.Errorf("Error: %v", err)
-		fmt.Println(err.Error())
+		fmt.Printf("\n\nError: %v\n\n", err)
 	}
 	instancetelegram.TelegramBotRunning = true
 	instancetelegram.InstanceBot = api
@@ -130,7 +124,7 @@ func RunTelegramGoRoutine(instancetelegram *InstanceTelegram) {
 		// Si no está registrado y manda "start" se le envía el mensaje de bienvenida.
 		if msg.Text == "/start" {
 
-			message := "Es un placer saludarte desde BotCore 🤖. "
+			message := "Es un placer saludarte desde BotCore 🤖. \n\n Tu ID es: " + strconv.Itoa(int(msg.Chat.ID))
 			SendMessagesTelegram(message, &msg.Chat.ID, instancetelegram)
 
 			return
@@ -143,6 +137,7 @@ func RunTelegramGoRoutine(instancetelegram *InstanceTelegram) {
 	})
 
 	log.Printf("Started on %v", me.Username)
+
 	message := "API REST BotCore corriendo 🤖🦾. "
 	chatIDString := os.Getenv("CHAT_ID_TO_NOTIFY")
 	var chatID telegrambot.ChatID
@@ -167,7 +162,7 @@ func RunTelegramGoRoutine(instancetelegram *InstanceTelegram) {
 func SendMessagesTelegram(messsage string, chatId *telegrambot.ChatID, instancetelegram *InstanceTelegram) (err error) {
 	_, err = instancetelegram.InstanceBot.SendMessage(&telegrambot.SendMessageParams{
 		ChatID: chatId,
-		Text:   fmt.Sprintf(messsage),
+		Text:   messsage,
 		ReplyMarkup: &telegrambot.ReplyKeyboardMarkup{
 			Keyboard: [][]*telegrambot.KeyboardButton{{
 				{

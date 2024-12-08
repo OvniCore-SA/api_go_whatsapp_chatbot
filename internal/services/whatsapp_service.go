@@ -226,7 +226,7 @@ func (s *WhatsappService) InteractWithAssistant(threadID, assistantID, message s
 	return response, nil
 }
 
-func (s *WhatsappService) NotifyInteractions() error {
+func (s *WhatsappService) NotifyInteractions(horasAtras uint) error {
 	// Obtener los números de teléfono asociados al asistente
 	filter := filters.AssistantsFiltro{
 		NumberPhoneToNotifyNotEmpty: true,
@@ -238,12 +238,18 @@ func (s *WhatsappService) NotifyInteractions() error {
 	}
 
 	var interactionSummaries []whatsappservicedto.InteractionSummary
+	var sixHoursAgo time.Time
 
 	for _, number := range numbers {
 		var usersContactos []whatsappservicedto.UserContactInfo
 		// Filtrar mensajes de las últimas 6 horas
 		for _, contact := range number.Contacts {
-			sixHoursAgo := time.Now().Add(-6 * time.Hour)
+			if horasAtras == 18 {
+				sixHoursAgo = time.Now().Add(-18 * time.Hour)
+			} else {
+				sixHoursAgo = time.Now().Add(-6 * time.Hour)
+			}
+
 			messages, err := s.messagesRepository.GetMessagesByNumber(number.ID, contact.ID, sixHoursAgo)
 			if err != nil {
 				return fmt.Errorf("error retrieving messages: %v", err)

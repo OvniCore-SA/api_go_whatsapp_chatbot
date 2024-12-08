@@ -18,7 +18,8 @@ func Setup(app *fiber.App,
 	RolesController *controllers.RolesController,
 	PermissionsController *controllers.PermissionsController,
 	WhatsappController *controllers.WhatsappController,
-	NumberPhonesController *controllers.NumberPhonesController) {
+	NumberPhonesController *controllers.NumberPhonesController,
+	TelegramService *controllers.TelegramController) {
 
 	app.Get("/", middleware.ValidarApikey(), func(c *fiber.Ctx) error {
 		return c.Send([]byte("Api chatbot whatsapp by OVNICORE  ®️ "))
@@ -62,6 +63,8 @@ func Setup(app *fiber.App,
 	api.Post("/webhook", WhatsappController.PostWhatsapp)
 	api.Post("/notificar-datos-clientes", middleware.ValidarApikey(), WhatsappController.DemoNotifyInteractions)
 	api.Post("/send-message-basic", middleware.ValidarApikey(), WhatsappController.PostSendMessageWhatsapp)
+
+	api.Post("/telegram/send-message", middleware.ValidarApikey(), TelegramService.SendMessageBasic)
 
 	api.Get("/logs", middleware.ValidarApikey(), LogsController.GetAll)
 	api.Get("/logs/:id", middleware.ValidarApikey(), LogsController.GetById)

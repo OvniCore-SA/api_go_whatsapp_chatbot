@@ -31,7 +31,7 @@ func (s *AutoProcessService) Start() error {
 	// Programar tarea para las 11:00
 	_, err := c.AddFunc("0 11 * * *", func() {
 		log.Println("Ejecutando NotifyInteractions a las 11:00")
-		if err := s.whatsappService.NotifyInteractions(); err != nil {
+		if err := s.whatsappService.NotifyInteractions(11); err != nil {
 			log.Printf("Error en NotifyInteractions: %v", err)
 		}
 	})
@@ -50,7 +50,7 @@ func (s *AutoProcessService) Start() error {
 	// Programar tarea para las 17:00
 	_, err = c.AddFunc("0 17 * * *", func() {
 		log.Println("Ejecutando NotifyInteractions a las 17:00")
-		if err := s.whatsappService.NotifyInteractions(); err != nil {
+		if err := s.whatsappService.NotifyInteractions(6); err != nil {
 			log.Printf("Error en NotifyInteractions: %v", err)
 		}
 	})
