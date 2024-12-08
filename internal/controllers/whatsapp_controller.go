@@ -78,13 +78,17 @@ func (controller *WhatsappController) GetWhatsapp(c *fiber.Ctx) error {
 
 func (controller *WhatsappController) DemoNotifyInteractions(c *fiber.Ctx) error {
 
-	err := controller.service.NotifyInteractions(82, "thread_KbFj1ArgiWd9Mo9Lm9jZG3hK")
+	err := controller.service.NotifyInteractions()
 	if err != nil {
-		fmt.Print("Error")
+		return c.Status(fiber.StatusBadRequest).JSON(&fiber.Map{
+			"status":  false,
+			"message": "Error: " + err.Error(),
+			"data":    nil,
+		})
 	}
-	return c.Status(fiber.StatusBadRequest).JSON(&fiber.Map{
-		"status":  false,
-		"message": "Error en obtención de parametros.",
+	return c.Status(fiber.StatusOK).JSON(&fiber.Map{
+		"status":  true,
+		"message": "Notificaciones enviadas con éxito.",
 		"data":    nil,
 	})
 

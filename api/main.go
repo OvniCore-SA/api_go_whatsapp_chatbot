@@ -92,6 +92,13 @@ func main() {
 	BussinessService := services.NewBussinessService(BussinessRepository)
 	BussinessController := controllers.NewBussinessController(BussinessService)
 
+	// Start procesos automaticos
+	autoProcess := services.NewAutoProcessService(WhatsappService)
+	err = autoProcess.Start()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// AUTH
 	AuthService := services.NewAuthService(UsersService, Password_resetsRepository)
 	AuthController := controllers.NewAuthController(AuthService)
@@ -110,6 +117,9 @@ func main() {
 		AllowHeaders: "",
 		AllowMethods: "GET,POST,PUT,DELETE",
 	}))
+
+	// Registrar el middleware de cabeceras seguras
+	app.Use(meddlewares.SecureHeadersMiddleware())
 
 	// Configuración de TODAS las rutas
 	routes.Setup(app, &meddlewares, AuthController, FileController, AssistantController, BussinessController, UsersController, LogsController, Password_resetsController, RolesController, PermissionsController, WhatsappController, NumberPhonesController)

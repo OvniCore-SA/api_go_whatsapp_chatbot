@@ -49,24 +49,6 @@ func NewWhatsappService(usersService *UsersService, logsService *LogsService, op
 	}
 }
 
-func (service *WhatsappService) HandleIncomingMessage(response whatsapp.ResponseComplet) error {
-	// Procesar cada entrada en el mensaje recibido
-	for _, entry := range response.Entry {
-		for _, change := range entry.Changes {
-			for _, message := range change.Value.Messages {
-				// Procesar el mensaje dependiendo de su tipo
-				fmt.Printf("Mensaje de tipo: %s", message.Type)
-				err := service.processMessage(change.Value)
-				if err != nil {
-					fmt.Println("ERROR: " + err.Error())
-					return err
-				}
-			}
-		}
-	}
-	return nil
-}
-
 func (service *WhatsappService) HandleIncomingMessageWithAssistant(response whatsapp.ResponseComplet) error {
 	for _, entry := range response.Entry {
 		for _, change := range entry.Changes {
@@ -244,12 +226,13 @@ func (s *WhatsappService) InteractWithAssistant(threadID, assistantID, message s
 	return response, nil
 }
 
-func (s *WhatsappService) NotifyInteractions(assistantIDDB int64, threadID string) error {
+func (s *WhatsappService) NotifyInteractions() error {
 	// Obtener los números de teléfono asociados al asistente
 	filter := filters.AssistantsFiltro{
 		NumberPhoneToNotifyNotEmpty: true,
+		UpladContacts:               true,
 	}
-	numbers, err := s.numberPhone.GetByFilter(filter)
+	numbers, err := s.numberPhone.repository.ListByFilter(filter)
 	if err != nil {
 		return fmt.Errorf("error retrieving numbers: %v", err)
 	}
@@ -257,104 +240,106 @@ func (s *WhatsappService) NotifyInteractions(assistantIDDB int64, threadID strin
 	var interactionSummaries []whatsappservicedto.InteractionSummary
 
 	for _, number := range numbers {
+		var usersContactos []whatsappservicedto.UserContactInfo
 		// Filtrar mensajes de las últimas 6 horas
-		sixHoursAgo := time.Now().Add(-6 * time.Hour)
-		messages, err := s.messagesRepository.GetMessagesByNumber(number.ID, sixHoursAgo)
-		if err != nil {
-			return fmt.Errorf("error retrieving messages: %v", err)
-		}
-
-		// Construir el mensaje para el asistente
-		var conversation strings.Builder
-		for _, message := range messages {
-			quienEnvioMensaje := "usuario"
-			if message.IsFromBot {
-				quienEnvioMensaje = "assistente"
+		for _, contact := range number.Contacts {
+			sixHoursAgo := time.Now().Add(-6 * time.Hour)
+			messages, err := s.messagesRepository.GetMessagesByNumber(number.ID, contact.ID, sixHoursAgo)
+			if err != nil {
+				return fmt.Errorf("error retrieving messages: %v", err)
 			}
-			conversation.WriteString(fmt.Sprintf("Emisor: %s, Mensaje: %s\n", quienEnvioMensaje, message.MessageText))
-		}
-		conversation.WriteString("\n¿El usuario envió su teléfono y correo electrónico? Responde solo en el siguiente formato:\n\ntelefono\nemail")
 
-		assistantIDGpt, err := s.configurationService.FindByKey("ASSISTANT_NOTIFY_CLIENTS")
-		if err != nil {
-			return fmt.Errorf("error retrieving assistant ID: %v", err)
-		}
-		threadIDGpt, err := s.configurationService.FindByKey("THREAD_NOTIFY_CLIENTS")
-		if err != nil {
-			return fmt.Errorf("error retrieving thread ID: %v", err)
-		}
-		fmt.Print(conversation.String())
-		// Interactuar con el asistente
-		response, err := s.InteractWithAssistant(threadIDGpt.Value, assistantIDGpt.Value, conversation.String())
-		if err != nil {
-			return fmt.Errorf("error interacting with assistant: %v", err)
-		}
+			if len(messages) <= 0 {
+				continue
+			}
 
-		//response := "3872937497\nemanuel.garcia@ovnix.com"
+			// Construir el mensaje para el asistente
+			var conversation strings.Builder
+			for _, message := range messages {
+				quienEnvioMensaje := "usuario"
+				if message.IsFromBot {
+					quienEnvioMensaje = "assistente"
+				}
+				conversation.WriteString(fmt.Sprintf("Emisor: %s, Mensaje: %s\n", quienEnvioMensaje, message.MessageText))
+			}
+			conversation.WriteString("\n¿El usuario envió su teléfono y correo electrónico? Responde solo en el siguiente formato:\n\ntelefono\nemail")
 
-		// Procesar la respuesta
-		lines := strings.Split(response, "\n")
-		if len(lines) < 2 {
-			continue
-		}
-		contactInfo := whatsappservicedto.UserContactInfo{
-			Telefono: lines[0],
-			Email:    lines[1],
-		}
+			assistantIDGpt, err := s.configurationService.FindByKey("ASSISTANT_NOTIFY_CLIENTS")
+			if err != nil {
+				return fmt.Errorf("error retrieving assistant ID: %v", err)
+			}
+			threadIDGpt, err := s.configurationService.FindByKey("THREAD_NOTIFY_CLIENTS")
+			if err != nil {
+				return fmt.Errorf("error retrieving thread ID: %v", err)
+			}
+			fmt.Print(conversation.String())
+			// Interactuar con el asistente
+			response, err := s.InteractWithAssistant(threadIDGpt.Value, assistantIDGpt.Value, conversation.String())
+			if err != nil {
+				return fmt.Errorf("error interacting with assistant: %v", err)
+			}
 
+			//response := "3872937497\nemanuel.garcia@ovnix.com"
+
+			// Procesar la respuesta
+			lines := strings.Split(response, "\n")
+			if len(lines) < 2 {
+				continue
+			}
+			contactInfo := whatsappservicedto.UserContactInfo{
+				Telefono: lines[0],
+				Email:    lines[1],
+			}
+
+			usersContactos = append(usersContactos, contactInfo)
+
+		}
 		// Agregar la interacción al resumen
 		interactionSummaries = append(interactionSummaries, whatsappservicedto.InteractionSummary{
-			NumberPhoneID: number.ID,
-			NumberPhone:   number.NumberPhone,
-			Contacts:      []whatsappservicedto.UserContactInfo{contactInfo},
+			NumberPhoneEntity: number,
+			NumberPhoneID:     number.ID,
+			NumberPhone:       number.NumberPhone,
+			Contacts:          usersContactos,
 		})
 	}
 
 	// Enviar notificaciones a los números designados
 	for _, summary := range interactionSummaries {
 		var message strings.Builder
-		message.WriteString("Estos usuarios pidieron una reunión:\n")
-		for _, contact := range summary.Contacts {
-			message.WriteString(fmt.Sprintf("%s, %s\n", contact.Telefono, contact.Email))
-		}
-		message.WriteString("\nPor favor coordina una reunión a convenir con el usuario.")
+		message.WriteString("👋 *Hola,*\n\n")
+		message.WriteString("Espero que estés muy bien. 😊 Desde el equipo de *OvniCore*, queremos informarte que los siguientes usuarios han solicitado coordinar una reunión:\n\n")
 
-		// err := s.SendWhatsappNotification(summary.NumberPhone, message.String())
-		// if err != nil {
-		// 	return fmt.Errorf("error sending WhatsApp notification: %v", err)
-		// }
+		for _, contact := range summary.Contacts {
+			message.WriteString(fmt.Sprintf("📞 *Teléfono:* %s\n✉️ *Correo:* %s\n\n", contact.Telefono, contact.Email))
+		}
+
+		message.WriteString("📅 *Por favor, te pedimos que contactes a estos usuarios para coordinar una reunión en el horario que sea más conveniente para ambas partes.*\n\n")
+		message.WriteString("🙏 ¡Gracias por tu atención y apoyo! Si necesitas alguna información adicional, no dudes en contactarnos. 🌟\n\n")
+		message.WriteString("🤝 *Saludos cordiales,*\n")
+		message.WriteString("El equipo de *OvniCore* 🚀")
+
+		err := s.SendWhatsappNotification(summary.NumberPhoneEntity, message.String())
+		if err != nil {
+			return fmt.Errorf("error sending WhatsApp notification: %v", err)
+		}
 	}
 
 	return nil
 }
 
-func (s *AssistantService) SendWhatsappNotification(number int64, message string) error {
+func (s *WhatsappService) SendWhatsappNotification(numberPhone entities.NumberPhone, message string) error {
 	// Lógica para enviar notificaciones por WhatsApp
 	// Puedes usar Baileys o la API que tengas configurada para este propósito
-	fmt.Printf("Enviando mensaje a %d: %s\n", number, message)
-	return nil
-}
+	fmt.Printf("Enviando mensaje a %d: %s\n", numberPhone.NumberPhoneToNotify, message)
 
-func (s *WhatsappService) getConversationHistory(assistantID, contactID int64) ([]map[string]interface{}, error) {
-
-	messages, err := s.messagesRepository.GetConversation(assistantID, contactID, 10) // Historial de los últimos 5 minutos
+	// Enviar la respuesta al usuario
+	contactToString := strconv.Itoa(int(numberPhone.NumberPhoneToNotify))
+	messageForBody := metaapi.NewSendMessageWhatsappBasic(message, contactToString)
+	err := s.sendMessageBasic(messageForBody, strconv.FormatInt(numberPhone.WhatsappNumberPhoneId, 10), numberPhone.TokenPermanent)
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("error sending response to user: %v", err)
 	}
-
-	var history []map[string]interface{}
-	for _, msg := range messages {
-		role := "user"
-		if msg.IsFromBot {
-			role = "assistant"
-		}
-		history = append(history, map[string]interface{}{
-			"role":    role,
-			"content": msg.MessageText,
-		})
-	}
-
-	return history, nil
+	return nil
 }
 
 func (service *WhatsappService) createNewThread(assistant dtos.AssistantDto) (string, error) {
@@ -419,75 +404,6 @@ func VerCuerpoRespuesta(resp *http.Response) (body []byte, err error) {
 	return
 }
 
-// parseUserSelection extrae la opción seleccionada del mensaje recibido
-func parseUserSelection(messageReceived string) (int, error) {
-	// Eliminar espacios en blanco al inicio y final del mensaje
-	trimmedMessage := strings.TrimSpace(messageReceived)
-
-	// Intentar convertir el mensaje en un número entero (la opción seleccionada)
-	userSelection, err := strconv.Atoi(trimmedMessage)
-	if err != nil {
-		return 0, fmt.Errorf("el mensaje recibido '%s' no es una opción válida", messageReceived)
-	}
-
-	// Retornar el número de la opción seleccionada
-	return userSelection, nil
-}
-
-func (service *WhatsappService) processMessage(value whatsapp.Value) error {
-	// Extraer la información principal del mensaje
-	sender, text, fecha, _, phoneNumberID, err := extractMessageInfo(value)
-	// Imprimo numero del emisor
-	fmt.Println("\nFecha message: " + fecha)
-	fmt.Println("\nEmisor: " + sender)
-	fmt.Println("\nMessage: " + text)
-	if err != nil {
-		return err
-	}
-
-	currentTime := time.Now()
-	// Verificar si existe una sesión para este phoneNumberID
-	session, exists := service.userSessions[phoneNumberID]
-
-	if !exists || isSessionExpired(session, currentTime) {
-		return service.handleNewSession(phoneNumberID, sender, currentTime)
-	}
-
-	// Procesar mensaje en sesión activa
-	return service.processSessionMessage(session, sender, text, phoneNumberID, currentTime)
-}
-
-func (service *WhatsappService) handleExistingSessionForChatbotOptionsMenuFalse(sender string, text string, chatbot *dtos.ChatbotsDto, promps *dtos.PrompsDto) error {
-	// Buscar el Resume relacionado al chatbot
-
-	// Crear el mensaje para OpenAI sin saludo
-
-	var openAiResponse string
-
-	response := metaapi.NewSendMessageWhatsappBasic(openAiResponse, sender)
-
-	// Responder al usuario con la respuesta de OpenAI
-	err := service.sendMessageBasic(response, chatbot.PhoneNumberId, chatbot.TokenApiWhatsapp)
-	if err != nil {
-		return fmt.Errorf("error sending OpenAI response to user: %v", err)
-	}
-
-	return nil
-}
-
-func (service *WhatsappService) handleNewSessionForChatbotOptionsMenuFalse(phoneNumberID string, sender string, text string, currentTime time.Time, chatbot *dtos.ChatbotsDto, promps *dtos.PrompsDto) error {
-	// Crear nueva sesión
-	menuMap := make(map[int]int)
-	// Crear o actualizar la sesión
-	service.createOrUpdateSession(phoneNumberID, currentTime, menuMap)
-
-	// Buscar el Resume relacionado al chatbot
-
-	// Crear el mensaje para OpenAI
-
-	return nil
-}
-
 // Extrae la información del mensaje
 func extractMessageInfo(value whatsapp.Value) (sender, text, fechaMessage, messageType, phoneNumberID string, err error) {
 
@@ -497,212 +413,5 @@ func extractMessageInfo(value whatsapp.Value) (sender, text, fechaMessage, messa
 	messageType = value.Messages[0].Type
 	phoneNumberID = value.Metadata.PhoneNumberID
 
-	// // El timestamp en formato Unix
-	// timestamp, _ := strconv.Atoi(value.Messages[0].Timestamp)
-
-	// // Convertir el timestamp a una fecha y hora legible en UTC
-	// t := time.Unix(int64(timestamp), 0)
-
-	// fechaMessage = t.Format("2006-01-02 15:04:05")
-
-	// // Verificar si el tiempo del mensaje es posterior al tiempo actual + 5 minutos
-	// currentTime := time.Now()
-	// if t.Before(currentTime.Add(-5 * time.Minute)) {
-	// 	err = fmt.Errorf("el timestamp del mensaje (%d) excede la fecha y hora actual menos 5 minutos", timestamp)
-	// 	return sender, text, "", "", phoneNumberID, err
-	// }
-
 	return sender, text, fechaMessage, messageType, phoneNumberID, nil
-}
-
-// Verifica si la sesión ha expirado
-func isSessionExpired(session *whatsapp.UserSession, currentTime time.Time) bool {
-	return currentTime.Sub(session.HoraConsulta) > time.Minute*5
-}
-
-// Manejar la creación de una nueva sesión y el envío del primer menú
-func (service *WhatsappService) handleNewSession(phoneNumberID, sender string, currentTime time.Time) error {
-
-	// Obtener y enviar el menú inicial
-
-	// Crear o actualizar la sesión
-
-	return nil
-}
-
-// Obtener y enviar el menú inicial
-func (service *WhatsappService) getAndSendInitialMenu(chatbot *dtos.ChatbotsDto, phoneNumberID, sender string) (string, map[int]int) {
-
-	// Enviar el menú inicial
-	return "", nil
-}
-
-// Crear o actualizar la sesión
-func (service *WhatsappService) createOrUpdateSession(phoneNumberID string, currentTime time.Time, menuMap map[int]int) {
-	service.userSessions[phoneNumberID] = &whatsapp.UserSession{
-		Opcion:         0,
-		HoraConsulta:   currentTime,
-		MenuEnviado:    1,
-		EsUltimaOpcion: false,
-		MenuOpciones:   menuMap, // Guardamos el mapa de menú en la sesión
-	}
-}
-
-// Procesar el mensaje cuando ya existe una sesión
-func (service *WhatsappService) processSessionMessage(session *whatsapp.UserSession, sender, text, phoneNumberID string, currentTime time.Time) error {
-
-	return nil
-}
-
-// Maneja una selección de usuario no válida y envía el menú inicial de nuevo
-func (service *WhatsappService) handleInvalidUserSelection(chatbot *dtos.ChatbotsDto, phoneNumberID, sender string, currentTime time.Time) error {
-	firstMenu, menuMap := service.getAndSendInitialMenu(chatbot, phoneNumberID, sender)
-	if firstMenu == "" {
-		return fmt.Errorf("error retrieving initial menu for phoneNumberID %s", phoneNumberID)
-	}
-
-	service.createOrUpdateSession(phoneNumberID, currentTime, menuMap)
-	return nil
-}
-
-// Manejar la selección del usuario y enviar el nuevo menú o finalizar la conversación
-func (service *WhatsappService) handleUserSelection(session *whatsapp.UserSession, userSelection int, chatbot *dtos.ChatbotsDto, sender, phoneNumberID string, currentTime time.Time) error {
-	selectedOptionID, exists := session.MenuOpciones[userSelection]
-	if !exists {
-		return service.handleInvalidUserSelection(chatbot, phoneNumberID, sender, currentTime)
-	}
-
-	// Si no hay más opciones, obtener y enviar el contenido real de la opción seleccionada
-
-	// Enviar el contenido real al usuario
-	err := service.sendRealContentToUser(session, uint64(selectedOptionID), chatbot, sender, phoneNumberID)
-	if err != nil {
-		return fmt.Errorf("error sending real content to user: %v", err)
-	}
-
-	// Marcar como la última opción y finalizar la sesión
-	session.EsUltimaOpcion = true
-	return nil
-}
-
-func (service *WhatsappService) sendRealContentToUser(session *whatsapp.UserSession, optionID uint64, chatbot *dtos.ChatbotsDto, sender, phoneNumberID string) error {
-	// Obtener el contenido real para la opción seleccionada
-
-	// Construir y enviar el mensaje con el contenido real al usuario
-
-	// Marcar la sesión como completada y limpiar
-	session.EsUltimaOpcion = true
-	delete(service.userSessions, phoneNumberID) // Limpiar la sesión después de enviar el contenido final
-
-	return nil
-}
-
-// Enviar las opciones disponibles al usuario
-func (service *WhatsappService) sendOptionsToUser(session *whatsapp.UserSession, opciones []dtos.OpcionPreguntasDto, chatbot *dtos.ChatbotsDto, sender, phoneNumberID string) error {
-	var messageText string
-	session.MenuOpciones = make(map[int]int) // Reiniciar el mapa para el nuevo conjunto de opciones
-
-	for i, opcion := range opciones {
-		optionNumber := i + 1
-		emojiOption := service.utilService.GetNumberEmoji(i + 1)
-		messageText += fmt.Sprintf("%s %s \n\n", emojiOption, opcion.Nombre)
-		session.MenuOpciones[optionNumber] = int(opcion.ID)
-
-		if service.isLastOption(opcion.ID, chatbot.ID) {
-			delete(service.userSessions, phoneNumberID)
-		}
-	}
-
-	message := metaapi.NewSendMessageWhatsappBasic(messageText, sender)
-	fmt.Println(messageText)
-	err := service.sendMessageBasic(message, phoneNumberID, chatbot.TokenApiWhatsapp)
-	if err != nil {
-		fmt.Printf("\nERROR SENDING MESSAGE: %v \n", err)
-	}
-
-	return nil
-}
-
-// Verifica si una opción es la última opción
-func (service *WhatsappService) isLastOption(optionID int64, chatbotID int64) bool {
-
-	return false
-}
-
-// Construir el prompt para OpenAI basado en las opciones del menú obtenidas desde la base de datos
-func (service *WhatsappService) buildOptionsPromptFromDB(session *whatsapp.UserSession) (string, error) {
-	var optionsText string
-
-	return optionsText, nil
-}
-
-// Actualizar la sesión basada en la respuesta de OpenAI
-func (service *WhatsappService) updateSessionWithOpenAIResponse(session *whatsapp.UserSession, currentTime time.Time) {
-	// Aquí puedes actualizar el estado de la sesión o el menú en función de la respuesta de OpenAI
-	session.HoraConsulta = currentTime
-}
-
-func (service *WhatsappService) SendTypingIndicator(responseComplet whatsapp.ResponseComplet) error {
-
-	sender := ""
-	phoneNumberID := ""
-	if len(responseComplet.Entry) > 0 && len(responseComplet.Entry[0].Changes) > 0 && len(responseComplet.Entry[0].Changes[0].Value.Messages) > 0 {
-		sender = responseComplet.Entry[0].Changes[0].Value.Messages[0].From
-		phoneNumberID = responseComplet.Entry[0].Changes[0].Value.Metadata.PhoneNumberID
-	} else {
-		return nil
-	}
-
-	if len(sender) >= 3 {
-		// Remover el tercer dígito del número de teléfono
-		sender = sender[:2] + sender[3:]
-	}
-
-	base, err := url.Parse(os.Getenv("WHATSAPP_URL") + "/" + os.Getenv("WHATSAPP_VERSION") + "/" + phoneNumberID + "/messages")
-	if err != nil {
-		return fmt.Errorf("error parcer url: %v", err)
-	}
-
-	// Construcción del cuerpo de la solicitud para enviar el evento "escribiendo"
-	body := map[string]interface{}{
-		"recipient_type": "individual",
-		"to":             sender, // Número del destinatario
-		"type":           "typing",
-		"typing": map[string]interface{}{
-			"status": "active",
-		},
-	}
-
-	// Serialización del cuerpo a JSON
-	bodyJSON, err := json.Marshal(body)
-	if err != nil {
-		return fmt.Errorf("error serializing body: %v", err)
-	}
-
-	// Creación de la solicitud HTTP
-	req, err := http.NewRequest("POST", base.String(), bytes.NewBuffer(bodyJSON))
-	if err != nil {
-		return fmt.Errorf("error creating request: %v", err)
-	}
-	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENAI_API_KEY"))
-	req.Header.Set("Content-Type", "application/json")
-
-	// Cliente HTTP
-	client := &http.Client{
-		Timeout: time.Second * 30,
-	}
-
-	// Ejecución de la solicitud
-	resp, err := client.Do(req)
-	if err != nil {
-		return fmt.Errorf("error making request: %v", err)
-	}
-	defer resp.Body.Close()
-
-	// Verificación del estado HTTP
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
-	}
-
-	return nil
 }

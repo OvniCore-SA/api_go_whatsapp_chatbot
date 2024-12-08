@@ -1,6 +1,8 @@
 package mysql_client
 
 import (
+	"fmt"
+
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities/filters"
 	"gorm.io/gorm"
@@ -47,7 +49,20 @@ func (r *NumberPhonesRepository) List() ([]entities.NumberPhone, error) {
 
 func (r *NumberPhonesRepository) ListByFilter(filter filters.AssistantsFiltro) ([]entities.NumberPhone, error) {
 	var records []entities.NumberPhone
-	err := r.db.Where("number_phone_to_notify > ?", 0).Find(&records).Error
+
+	// Base de la consulta
+	query := r.db.Where("number_phone_to_notify > ?", 0)
+
+	// Aplicar Preload para relaciones si es necesario
+	if filter.UpladContacts {
+		query = query.Preload("Contacts") // Precarga la relación "Contacts"
+	}
+
+	// Ejecutar la consulta
+	err := query.Find(&records).Error
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving number phones with contacts: %w", err)
+	}
 	return records, err
 }
 

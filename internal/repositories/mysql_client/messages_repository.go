@@ -1,6 +1,7 @@
 package mysql_client
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities"
@@ -30,9 +31,9 @@ func (r *MessagesRepository) GetMessagesByAssistantAndContact(assistantID, conta
 }
 
 // GetMessagesByNumber retrieves all messages associated with a specific number within a given time range
-func (r *MessagesRepository) GetMessagesByNumber(numberID int64, since time.Time) ([]entities.Message, error) {
+func (r *MessagesRepository) GetMessagesByNumber(numberID, contacID int64, since time.Time) ([]entities.Message, error) {
 	var messages []entities.Message
-	err := r.db.Where("number_phones_id = ? AND created_at >= ?", numberID, since).Order("created_at ASC").Preload("Contact").Find(&messages).Error
+	err := r.db.Where("number_phones_id = ? AND contacts_id = ? AND  created_at >= ?", numberID, contacID, since).Order("created_at ASC").Preload("Contact").Find(&messages).Error
 
 	if err != nil {
 		return nil, err
@@ -51,4 +52,20 @@ func (r *MessagesRepository) GetConversation(assistantID, contactID int64, since
 
 	err := query.Find(&messages).Error
 	return messages, err
+}
+
+func (r *MessagesRepository) GetMessagesWithContacts(numberIDs []int64, since time.Time) ([]entities.Message, error) {
+	var messages []entities.Message
+
+	err := r.db.
+		Where("number_phones_id IN ? AND created_at >= ?", numberIDs, since).
+		Preload("NumberPhone").
+		Preload("Contact").
+		Order("created_at DESC").
+		Find(&messages).Error
+	if err != nil {
+		return nil, fmt.Errorf("error fetching messages with contacts: %w", err)
+	}
+
+	return messages, nil
 }
