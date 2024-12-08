@@ -27,12 +27,21 @@ func (s *AutoProcessService) Start() error {
 	}
 	c := cron.New()
 
+	//
 	// Programar tarea para las 11:00
 	_, err := c.AddFunc("0 11 * * *", func() {
 		log.Println("Ejecutando NotifyInteractions a las 11:00")
 		if err := s.whatsappService.NotifyInteractions(); err != nil {
 			log.Printf("Error en NotifyInteractions: %v", err)
 		}
+	})
+	if err != nil {
+		return fmt.Errorf("error scheduling 11:00 process: %v", err)
+	}
+
+	_, err = c.AddFunc("13 14 * * *", func() {
+		log.Println("Ejecutando NotifyInteractions a las 14:13")
+
 	})
 	if err != nil {
 		return fmt.Errorf("error scheduling 11:00 process: %v", err)

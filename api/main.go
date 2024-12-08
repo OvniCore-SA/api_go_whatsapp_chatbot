@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/api/middlewares"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/config"
@@ -21,8 +22,15 @@ import (
 )
 
 func main() {
+	// Configurar zona horaria global
+	loc, err := time.LoadLocation("America/Argentina/Buenos_Aires")
+	if err != nil {
+		log.Fatalf("Error cargando la zona horaria: %v", err)
+	}
+	time.Local = loc
+
 	// Cargar las variables del archivo .env
-	err := godotenv.Load(".env")
+	err = godotenv.Load(".env")
 	if err != nil {
 		fmt.Println("Error cargando el archivo .env")
 		return
