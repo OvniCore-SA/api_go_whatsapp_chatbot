@@ -23,6 +23,16 @@ func (r *MessagesRepository) Create(record entities.Message) error {
 	return r.db.Create(&record).Error
 }
 
+// Verifyca si existe un registro con el messageID.
+func (r *MessagesRepository) ExistsByMessageID(messageID string) (bool, error) {
+	var count int64
+	err := r.db.Model(&entities.Message{}).Where("message_id_whatsapp = ?", messageID).Count(&count).Error
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
 // Obtener todos los mensajes entre un assistant y un contact
 func (r *MessagesRepository) GetMessagesByAssistantAndContact(assistantID, contactID int64) ([]entities.Message, error) {
 	var messages []entities.Message

@@ -57,6 +57,19 @@ func (service *WhatsappService) HandleIncomingMessageWithAssistant(response what
 
 				fmt.Println("ID Message: ", message.ID)
 				fmt.Print(message.Text.Body)
+
+				// Verificar si el mensaje ya existe por su message_id_whatsapp
+				exists, err := service.messagesRepository.ExistsByMessageID(message.ID)
+				if err != nil {
+					return fmt.Errorf("failed to check message existence: %w", err)
+				}
+
+				// Si ya se proceso el mensaje se retorna nil
+				if exists {
+					fmt.Printf("Message with ID %s already processed\n", message.ID)
+					return nil
+				}
+
 				// Extraer información básica
 				sender, text, _, _, phoneNumberID, err := extractMessageInfo(change.Value)
 				if err != nil {
@@ -79,7 +92,7 @@ func (service *WhatsappService) HandleIncomingMessageWithAssistant(response what
 				}
 
 				// Manejar el mensaje con OpenAI
-				err = service.handleMessageWithOpenAI(contact, text, numberPhone)
+				err = service.handleMessageWithOpenAI(contact, text, message.ID, numberPhone)
 				if err != nil {
 					log.Printf("Error handling message with OpenAI: %v", err)
 					return err
@@ -125,7 +138,7 @@ func (service *WhatsappService) findOrCreateContact(numberPhone *entities.Number
 	return &contact, nil
 }
 
-func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contact, text string, numberPhone *entities.NumberPhone) error {
+func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contact, text, messageID string, numberPhone *entities.NumberPhone) error {
 	// Configurar el asistente
 	assistant, err := service.assistantService.FindAssistantById(numberPhone.AssistantsID)
 	if err != nil {
@@ -180,10 +193,11 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 
 	// Guardar la respuesta del asistente en la base de datos
 	err = service.messagesRepository.Create(entities.Message{
-		NumberPhonesID: numberPhone.ID,
-		ContactsID:     contact.ID,
-		MessageText:    response,
-		IsFromBot:      true,
+		NumberPhonesID:    numberPhone.ID,
+		ContactsID:        contact.ID,
+		MessageIdWhatsapp: messageID,
+		MessageText:       response,
+		IsFromBot:         true,
 	})
 	if err != nil {
 		return fmt.Errorf("error saving assistant response: %v", err)
