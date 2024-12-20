@@ -61,6 +61,7 @@ func (service *WhatsappService) HandleIncomingMessageWithAssistant(response what
 				// Verificar si el mensaje ya existe por su message_id_whatsapp
 				exists, err := service.messagesRepository.ExistsByMessageID(message.ID)
 				if err != nil {
+					fmt.Println("MENSAJE REPETIDO")
 					return fmt.Errorf("failed to check message existence: %w", err)
 				}
 
