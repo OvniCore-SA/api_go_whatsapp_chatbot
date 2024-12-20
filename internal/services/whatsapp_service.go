@@ -21,6 +21,7 @@ import (
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities/filters"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/repositories/mysql_client"
+	"golang.org/x/exp/rand"
 )
 
 type WhatsappService struct {
@@ -177,10 +178,11 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 
 	// Guardar el mensaje del contacto en la base de datos
 	err = service.messagesRepository.Create(entities.Message{
-		NumberPhonesID: numberPhone.ID,
-		ContactsID:     contact.ID,
-		MessageText:    text,
-		IsFromBot:      false,
+		NumberPhonesID:    numberPhone.ID,
+		ContactsID:        contact.ID,
+		MessageText:       text,
+		MessageIdWhatsapp: messageID,
+		IsFromBot:         false,
 	})
 	if err != nil {
 		return fmt.Errorf("error saving contact message: %v", err)
@@ -192,16 +194,10 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 		return fmt.Errorf("error sending message to OpenAI: %v", err)
 	}
 
-	// Guardar la respuesta del asistente en la base de datos
-	err = service.messagesRepository.Create(entities.Message{
-		NumberPhonesID:    numberPhone.ID,
-		ContactsID:        contact.ID,
-		MessageIdWhatsapp: messageID,
-		MessageText:       response,
-		IsFromBot:         true,
-	})
+	// Guardar el mensaje del contacto en la base de datos
+	err = saveMessageWithUniqueID(service, int(numberPhone.NumberPhone), int(contact.ID), response)
 	if err != nil {
-		return fmt.Errorf("error saving assistant response: %v", err)
+		return fmt.Errorf("error saving contact message: %v", err)
 	}
 
 	// Enviar la respuesta al usuario
@@ -210,6 +206,52 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 	err = service.sendMessageBasic(message, strconv.FormatInt(numberPhone.WhatsappNumberPhoneId, 10), numberPhone.TokenPermanent)
 	if err != nil {
 		return fmt.Errorf("error sending response to user: %v", err)
+	}
+
+	return nil
+}
+
+// Función para generar un string único
+func generateUniqueID() string {
+	rand.Seed(uint64(time.Now().UnixNano())) // Conversión explícita
+	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	id := make([]byte, 12) // Generará un ID de longitud 12
+	for i := range id {
+		id[i] = charset[rand.Intn(len(charset))]
+	}
+	return string(id)
+}
+
+// Lógica para guardar un mensaje con un ID único
+func saveMessageWithUniqueID(service *WhatsappService, numberPhoneID, contactID int, response string) error {
+	var messageID string
+	var isUnique bool
+
+	// Intentar generar un ID único
+	for !isUnique {
+		messageID = generateUniqueID()
+
+		// Comprobar si el ID ya existe en la base de datos
+		exists, err := service.messagesRepository.ExistsByMessageID(messageID)
+		if err != nil {
+			return fmt.Errorf("error checking message ID uniqueness: %v", err)
+		}
+
+		if !exists {
+			isUnique = true
+		}
+	}
+
+	// Guardar el mensaje en la base de datos
+	err := service.messagesRepository.Create(entities.Message{
+		NumberPhonesID:    int64(numberPhoneID),
+		ContactsID:        int64(contactID),
+		MessageIdWhatsapp: messageID,
+		MessageText:       response,
+		IsFromBot:         true,
+	})
+	if err != nil {
+		return fmt.Errorf("error saving assistant response: %v", err)
 	}
 
 	return nil

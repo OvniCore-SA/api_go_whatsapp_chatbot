@@ -1,6 +1,6 @@
 module github.com/OvniCore-SA/api_go_whatsapp_chatbot
 
-go 1.22
+go 1.22.0
 
 toolchain go1.22.3
 
@@ -48,6 +48,7 @@ require (
 	github.com/valyala/fasthttp v1.51.0 // indirect
 	github.com/valyala/tcplisten v1.0.0 // indirect
 	golang.org/x/crypto v0.28.0
+	golang.org/x/exp v0.0.0-20241217172543-b2144cdd0a67
 	golang.org/x/sys v0.26.0 // indirect
 	golang.org/x/text v0.19.0 // indirect
 )
