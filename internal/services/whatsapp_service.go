@@ -52,6 +52,7 @@ func NewWhatsappService(usersService *UsersService, logsService *LogsService, op
 
 func (service *WhatsappService) HandleIncomingMessageWithAssistant(response whatsapp.ResponseComplet) error {
 	for _, entry := range response.Entry {
+		fmt.Println("Len Entry: ", len(response.Entry))
 		fmt.Println("ID Entry: ", entry.ID)
 		for _, change := range entry.Changes {
 			for _, message := range change.Value.Messages {
