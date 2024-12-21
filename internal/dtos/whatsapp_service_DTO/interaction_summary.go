@@ -3,8 +3,10 @@ package whatsappservicedto
 import "github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities"
 
 type UserContactInfo struct {
-	Telefono string
-	Email    string
+	Nombre    string
+	Telefono  string
+	Email     string
+	FechaHora string
 }
 
 type InteractionSummary struct {

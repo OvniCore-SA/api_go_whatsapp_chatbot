@@ -327,7 +327,7 @@ func (s *WhatsappService) NotifyInteractions(horasAtras uint) error {
 				}
 				conversation.WriteString(fmt.Sprintf("Emisor: %s, Mensaje: %s\n", quienEnvioMensaje, message.MessageText))
 			}
-			conversation.WriteString("\n¿El usuario envió su teléfono y correo electrónico? Responde solo en el siguiente formato:\n\ntelefono\nemail")
+			conversation.WriteString("\n¿El usuario envió su nombre, teléfono, correo electrónico y una fecha y hora para una reunión? Responde solo en el siguiente formato:\n\nnombre\ntelefono\nemail\nfecha y hora")
 
 			assistantIDGpt, err := s.configurationService.FindByKey("ASSISTANT_NOTIFY_CLIENTS")
 			if err != nil {
@@ -348,12 +348,14 @@ func (s *WhatsappService) NotifyInteractions(horasAtras uint) error {
 
 			// Procesar la respuesta
 			lines := strings.Split(response, "\n")
-			if len(lines) < 2 {
+			if len(lines) < 4 {
 				continue
 			}
 			contactInfo := whatsappservicedto.UserContactInfo{
-				Telefono: lines[0],
-				Email:    lines[1],
+				Nombre:    lines[0],
+				Telefono:  lines[1],
+				Email:     lines[2],
+				FechaHora: lines[3],
 			}
 
 			usersContactos = append(usersContactos, contactInfo)
@@ -372,10 +374,15 @@ func (s *WhatsappService) NotifyInteractions(horasAtras uint) error {
 	for _, summary := range interactionSummaries {
 		var message strings.Builder
 		message.WriteString("👋 *Hola,*\n\n")
+
 		message.WriteString("Espero que estés muy bien. 😊 Desde el equipo de *OvniCore*, queremos informarte que los siguientes usuarios han solicitado coordinar una reunión:\n\n")
 
 		for _, contact := range summary.Contacts {
-			message.WriteString(fmt.Sprintf("📞 *Teléfono:* %s\n✉️ *Correo:* %s\n\n", contact.Telefono, contact.Email))
+			message.WriteString(fmt.Sprintf("👤 *Nombre:* %s \n", contact.Nombre))
+			message.WriteString(fmt.Sprintf("📞 *Teléfono:* %s\n", contact.Telefono))
+			message.WriteString(fmt.Sprintf("✉️ *Correo:* %s\n", contact.Email))
+			message.WriteString(fmt.Sprintf("📅 *Fecha y Hora de la Reunión:* %s\n\n", contact.FechaHora))
+
 		}
 
 		message.WriteString("📅 *Por favor, te pedimos que contactes a estos usuarios para coordinar una reunión en el horario que sea más conveniente para ambas partes.*\n\n")
