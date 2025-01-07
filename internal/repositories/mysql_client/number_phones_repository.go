@@ -58,6 +58,8 @@ func (r *NumberPhonesRepository) ListByFilter(filter filters.AssistantsFiltro) (
 		query = query.Preload("Contacts") // Precarga la relación "Contacts"
 	}
 
+	query = query.Preload("Assistant")
+
 	// Ejecutar la consulta
 	err := query.Find(&records).Error
 	if err != nil {

@@ -272,7 +272,7 @@ func (s *WhatsappService) InteractWithAssistant(threadID, assistantID, message s
 	fmt.Printf("Run created: %s\n", runID)
 
 	// Esperar a que el run esté completado
-	err = s.openAIAssistantService.WaitForRunCompletion(threadID, runID, 10, 2*time.Second)
+	err = s.openAIAssistantService.WaitForRunCompletion(threadID, runID, 30, 2*time.Second)
 	if err != nil {
 		return "", fmt.Errorf("error waiting for run completion: %v", err)
 	}
@@ -319,44 +319,39 @@ func (s *WhatsappService) NotifyInteractions(horasAtras uint) error {
 				continue
 			}
 
-			// Construir el mensaje para el asistente
-			var conversation strings.Builder
-			for _, message := range messages {
-				quienEnvioMensaje := "usuario"
-				if message.IsFromBot {
-					quienEnvioMensaje = "assistente"
-				}
-				conversation.WriteString(fmt.Sprintf("Emisor: %s, Mensaje: %s\n", quienEnvioMensaje, message.MessageText))
-			}
-			conversation.WriteString("\n¿El usuario envió su nombre, teléfono, correo electrónico y una fecha y hora para una reunión? Responde solo en el siguiente formato:\n\nnombre\ntelefono\nemail\nfecha y hora")
-
-			assistantIDGpt, err := s.configurationService.FindByKey("ASSISTANT_NOTIFY_CLIENTS")
-			if err != nil {
-				return fmt.Errorf("error retrieving assistant ID: %v", err)
-			}
-			threadIDGpt, err := s.configurationService.FindByKey("THREAD_NOTIFY_CLIENTS")
-			if err != nil {
-				return fmt.Errorf("error retrieving thread ID: %v", err)
-			}
-			fmt.Print(conversation.String())
-			// Interactuar con el asistente
-			response, err := s.InteractWithAssistant(threadIDGpt.Value, assistantIDGpt.Value, conversation.String())
+			messagePromt := "Quiero que revises este hilo de conversación y, dentro de un lapso de 6 horas atrás, identifiques si algún usuario acordó una reunión. Para que sea válida, debe haber proporcionado explícitamente los siguientes datos: su nombre y correo electrónico, siendo opcional el número de celular.\nSi encuentras estos datos, respóndeme únicamente en el siguiente formato y nada más:\n\n[Nombre del usuario]\n[Correo del usuario]\n[Número de celular] (indica 'No proporcionado' si no lo dio). SOLO LOS DATOS, NO EL NOMBRE DE CADA DATO.\n\nSi no encuentras ninguna reunión dentro del lapso indicado o si los datos no están completos, responde únicamente con 'No se encontró información de reuniones.' No proporciones nada adicional ni interpretes respuestas parciales."
+			response, err := s.InteractWithAssistant(contact.OpenaiThreadsID, number.Assistant.OpenaiAssistantsID, messagePromt)
 			if err != nil {
 				return fmt.Errorf("error interacting with assistant: %v", err)
 			}
+
+			// Construir el mensaje para el asistente
 
 			//response := "3872937497\nemanuel.garcia@ovnix.com"
 
 			// Procesar la respuesta
 			lines := strings.Split(response, "\n")
-			if len(lines) < 4 {
+
+			// Verificar que haya al menos 4 líneas (nombre, teléfono, email, fecha/hora)
+			if len(lines) < 3 {
+				fmt.Println("Error: Respuesta incompleta o mal formateada")
+				fmt.Print(lines)
 				continue
 			}
+
+			// Verificar que cada campo no esté vacío
+			for i, line := range lines[:3] {
+				if strings.TrimSpace(line) == "" {
+					fmt.Printf("Error: Campo vacío en la línea %d\n", i+1)
+					continue
+				}
+			}
+
+			// Asignar los datos solo si pasan las verificaciones
 			contactInfo := whatsappservicedto.UserContactInfo{
-				Nombre:    lines[0],
-				Telefono:  lines[1],
-				Email:     lines[2],
-				FechaHora: lines[3],
+				Nombre:   strings.TrimSpace(lines[0]),
+				Telefono: strings.TrimSpace(lines[1]),
+				Email:    strings.TrimSpace(lines[2]),
 			}
 
 			usersContactos = append(usersContactos, contactInfo)
@@ -377,6 +372,10 @@ func (s *WhatsappService) NotifyInteractions(horasAtras uint) error {
 		message.WriteString("👋 *Hola,*\n\n")
 
 		message.WriteString("Espero que estés muy bien. 😊 Desde el equipo de *OvniCore*, queremos informarte que los siguientes usuarios han solicitado coordinar una reunión:\n\n")
+
+		if len(summary.Contacts) <= 0 {
+			continue
+		}
 
 		for _, contact := range summary.Contacts {
 			message.WriteString(fmt.Sprintf("👤 *Nombre:* %s \n", contact.Nombre))
