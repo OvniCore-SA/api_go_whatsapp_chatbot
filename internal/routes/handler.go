@@ -4,6 +4,7 @@ import (
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/api/middlewares"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/controllers"
 	"github.com/gofiber/fiber/v2"
+	"golang.org/x/oauth2"
 )
 
 func Setup(app *fiber.App,
@@ -19,7 +20,8 @@ func Setup(app *fiber.App,
 	PermissionsController *controllers.PermissionsController,
 	WhatsappController *controllers.WhatsappController,
 	NumberPhonesController *controllers.NumberPhonesController,
-	TelegramService *controllers.TelegramController) {
+	TelegramService *controllers.TelegramController,
+	OauthConfig *oauth2.Config) {
 
 	app.Get("/", middleware.ValidarApikey(), func(c *fiber.Ctx) error {
 		return c.Send([]byte("Api chatbot whatsapp by OVNICORE  ®️ "))
@@ -44,6 +46,12 @@ func Setup(app *fiber.App,
 	api.Post("/login", AuthController.Login)
 	api.Post("/restore-password", AuthController.RestorePassword)
 	api.Post("/reset-password", AuthController.ResetPassword)
+
+	// Rutas de autenticación
+	app.Get("/auth/url", middleware.ValidarApikey(), controllers.GetAuthURL(OauthConfig))
+	app.Get("/auth/callback", controllers.GetAuthToken(OauthConfig))
+	// Endpoint para obtener eventos del calendario
+	app.Get("/calendar/events", middleware.ValidarApikey(), controllers.GetCalendarEvents(OauthConfig))
 
 	api.Get("/users", middleware.ValidarApikey(), UsersController.GetAll)
 	api.Get("/users/:id", middleware.ValidarApikey(), UsersController.GetById)

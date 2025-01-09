@@ -36,6 +36,10 @@ func main() {
 		fmt.Println("Error cargando el archivo .env")
 		return
 	}
+
+	// Cargar configuración de OAuth
+	OauthConfig := config.LoadOAuthConfig()
+
 	app := fiber.New()
 
 	// Configuración de la base de datos
@@ -134,7 +138,7 @@ func main() {
 	app.Use(meddlewares.SecureHeadersMiddleware())
 
 	// Configuración de TODAS las rutas
-	routes.Setup(app, &meddlewares, AuthController, FileController, AssistantController, BussinessController, UsersController, LogsController, Password_resetsController, RolesController, PermissionsController, WhatsappController, NumberPhonesController, TelegramController)
+	routes.Setup(app, &meddlewares, AuthController, FileController, AssistantController, BussinessController, UsersController, LogsController, Password_resetsController, RolesController, PermissionsController, WhatsappController, NumberPhonesController, TelegramController, OauthConfig)
 
 	log.Fatal(app.Listen(":" + os.Getenv("APP_PORT")))
 }
