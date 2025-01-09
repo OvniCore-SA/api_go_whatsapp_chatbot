@@ -218,7 +218,7 @@ func getTemplate(userName, token, hostView string) string {
 				<div class="content">
 					<p>Hola <b>%s</b>,</p>
 					<p>Has solicitado restaurar tu contraseña. Utiliza el siguiente enlace para hacerlo:</p>
-					<a href="%s/api/reset-password?token=%s" class="button">Restaurar contraseña</a>
+					<a href="%s/reset-password?token=%s" class="button">Restaurar contraseña</a>
 					<p>Si no solicitaste este cambio, puedes ignorar este correo.</p>
 				</div>
 				<div class="footer">
