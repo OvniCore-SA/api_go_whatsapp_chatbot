@@ -49,7 +49,7 @@ func Setup(app *fiber.App,
 
 	// Rutas de autenticación
 	app.Get("/auth/url", middleware.ValidarApikey(), controllers.GetAuthURL(OauthConfig))
-	app.Get("/auth/callback", controllers.GetAuthToken(OauthConfig))
+	app.Get("/auth/callback-auth", controllers.GetAuthToken(OauthConfig))
 	// Endpoint para obtener eventos del calendario
 	app.Get("/calendar/events", middleware.ValidarApikey(), controllers.GetCalendarEvents(OauthConfig))
 
