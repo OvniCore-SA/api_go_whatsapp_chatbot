@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"log"
 	"time"
 
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/services"
@@ -119,6 +120,17 @@ func HandleAuthCallback(config *oauth2.Config) fiber.Handler {
 // GetAuthToken procesa el código de autorización y genera el token de acceso.
 func GetAuthToken(config *oauth2.Config) fiber.Handler {
 	return func(c *fiber.Ctx) error {
+
+		// Imprime el cuerpo de la solicitud
+		log.Println("Body recibido:")
+		log.Println(string(c.Body()))
+
+		// Imprime las cabeceras de la solicitud
+		log.Println("Headers:")
+		c.Request().Header.VisitAll(func(key, value []byte) {
+			log.Printf("%s: %s\n", string(key), string(value))
+		})
+
 		var request struct {
 			Code string `json:"code"`
 		}
