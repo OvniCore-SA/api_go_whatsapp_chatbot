@@ -121,9 +121,22 @@ func HandleAuthCallback(config *oauth2.Config) fiber.Handler {
 func GetAuthToken(config *oauth2.Config) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 
+		// Imprime la URL completa de la solicitud
+		log.Println("URL completa de la solicitud:")
+		log.Println(c.OriginalURL())
+
 		// Imprime el cuerpo de la solicitud
 		log.Println("Body recibido:")
 		log.Println(string(c.Body()))
+
+		// Captura el código de autorización desde los parámetros de consulta
+		code := c.Query("code")
+		if code == "" {
+			log.Println("code: ", code)
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": "El parámetro 'code' es obligatorio",
+			})
+		}
 
 		// Imprime las cabeceras de la solicitud
 		log.Println("Headers:")
