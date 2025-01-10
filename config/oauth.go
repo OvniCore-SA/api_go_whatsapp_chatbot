@@ -16,7 +16,7 @@ func LoadOAuthConfig() *oauth2.Config {
 		log.Fatalf("No se pudo leer el archivo de credenciales: %v", err)
 	}
 
-	fmt.Println("Archivo cargado exitosamente. GOOGLE")
+	fmt.Println("Archivo de autenticación GOOGLE cargado exitosamente.")
 
 	config, err := google.ConfigFromJSON(credentials, "https://www.googleapis.com/auth/calendar.readonly")
 	if err != nil {
