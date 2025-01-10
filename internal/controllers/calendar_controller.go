@@ -4,6 +4,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/services"
 	"github.com/gofiber/fiber/v2"
 	"golang.org/x/oauth2"
@@ -138,23 +139,16 @@ func GetAuthToken(config *oauth2.Config) fiber.Handler {
 			})
 		}
 
-		// Imprime las cabeceras de la solicitud
-		log.Println("Headers:")
-		c.Request().Header.VisitAll(func(key, value []byte) {
-			log.Printf("%s: %s\n", string(key), string(value))
-		})
-
-		var request struct {
-			Code string `json:"code"`
-		}
-
-		if err := c.BodyParser(&request); err != nil {
+		var req dtos.RequestRedirectGoogleAuth
+		err := c.QueryParser(&req)
+		if err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"error": "Código de autorización inválido",
+				"error":   "No se pudo parsear la respuesta",
+				"message": "No se pudo parsear la respuesta",
 			})
 		}
 
-		token, err := services.ExchangeCodeForToken(config, request.Code)
+		token, err := services.ExchangeCodeForToken(config, code)
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": "No se pudo generar el token",
