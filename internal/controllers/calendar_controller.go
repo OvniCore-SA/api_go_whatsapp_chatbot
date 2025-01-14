@@ -156,8 +156,11 @@ func GetAuthToken(config *oauth2.Config) fiber.Handler {
 		}
 
 		return c.JSON(fiber.Map{
-			"access_token": token.AccessToken,
-			"expiry":       token.Expiry,
+			"access_token":  token.AccessToken,
+			"expiry":        token.Expiry,
+			"token_type":    token.TokenType,
+			"refresh_token": token.RefreshToken,
+			"expires_in":    token.ExpiresIn,
 		})
 	}
 }
