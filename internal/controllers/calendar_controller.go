@@ -77,7 +77,7 @@ func GetCalendarEvents(config *oauth2.Config) fiber.Handler {
 // GetAuthURL genera la URL de autenticación de Google.
 func GetAuthURL(config *oauth2.Config) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		authURL := config.AuthCodeURL("state-token", oauth2.AccessTypeOffline)
+		authURL := config.AuthCodeURL("state-token", oauth2.AccessTypeOffline, oauth2.ApprovalForce)
 		return c.JSON(fiber.Map{
 			"auth_url": authURL,
 		})
@@ -147,6 +147,7 @@ func GetAuthToken(config *oauth2.Config) fiber.Handler {
 				"message": "No se pudo parsear la respuesta",
 			})
 		}
+		log.Println(req)
 
 		token, err := services.ExchangeCodeForToken(config, code)
 		if err != nil {

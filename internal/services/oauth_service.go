@@ -16,6 +16,8 @@ func ExchangeCodeForToken(config *oauth2.Config, code string) (*oauth2.Token, er
 		log.Printf("Error al intercambiar el código por un token: %v", err)
 		return nil, err
 	}
+	// Log para depurar el contenido del token
+	log.Printf("Token recibido: %+v\n", token)
 	return token, nil
 }
 
