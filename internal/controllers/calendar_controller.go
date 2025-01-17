@@ -1,6 +1,9 @@
 package controllers
 
 import (
+	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/services"
@@ -75,7 +78,23 @@ func GetCalendarEvents(config *oauth2.Config) fiber.Handler {
 // GetAuthURL genera la URL de autenticación de Google.
 func GetAuthURL(config *oauth2.Config) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		authURL := config.AuthCodeURL("state-token", oauth2.AccessTypeOffline, oauth2.ApprovalForce)
+		// Obtén parámetros adicionales desde la URL de la solicitud
+		assistantID := c.Query("assistant_id")
+		redirectURL := c.Query("redirect_url")
+
+		// Verifica que los parámetros sean válidos
+		if assistantID == "" || redirectURL == "" {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": "assistant_id y redirect_url son obligatorios",
+			})
+		}
+
+		// Construir el estado personalizado con assistant_id y redirect_url
+		state := fmt.Sprintf("assistant_id=%s&redirect_url=%s", assistantID, redirectURL)
+
+		// Generar la URL de autenticación con el estado personalizado
+		authURL := config.AuthCodeURL(state, oauth2.AccessTypeOffline, oauth2.ApprovalForce)
+
 		return c.JSON(fiber.Map{
 			"auth_url": authURL,
 		})
@@ -118,11 +137,37 @@ func HandleAuthCallback(config *oauth2.Config) fiber.Handler {
 
 func GetAuthToken(config *oauth2.Config, googleCalendarService *services.GoogleCalendarService) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		// Capturar el código de autorización desde la URL
+		// Capturar el código y el estado desde los parámetros de consulta
 		code := c.Query("code")
+		state := c.Query("state")
+
 		if code == "" {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 				"error": "El parámetro 'code' es obligatorio",
+			})
+		}
+
+		if state == "" {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": "El parámetro 'state' es obligatorio",
+			})
+		}
+
+		// Procesar el estado para extraer los parámetros adicionales
+		params := make(map[string]string)
+		for _, param := range strings.Split(state, "&") {
+			kv := strings.SplitN(param, "=", 2)
+			if len(kv) == 2 {
+				params[kv[0]] = kv[1]
+			}
+		}
+
+		assistantID := params["assistant_id"]
+		redirectURL := params["redirect_url"]
+
+		if assistantID == "" || redirectURL == "" {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": "No se encontraron los parámetros 'assistant_id' y 'redirect_url' en el estado",
 			})
 		}
 
@@ -133,15 +178,6 @@ func GetAuthToken(config *oauth2.Config, googleCalendarService *services.GoogleC
 				"error": "No se pudo generar el token",
 			})
 		}
-
-		// Capturar el assistant_id desde la URL o el cuerpo
-		assistantID := c.QueryInt("assistant_id")
-		if assistantID <= 0 {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"error": "El parámetro 'assistant_id' es obligatorio",
-			})
-		}
-
 		// Obtener información del usuario con el token
 		client := config.Client(c.Context(), token)
 		googleUserID, err := services.GetGoogleUserID(client)
@@ -151,18 +187,16 @@ func GetAuthToken(config *oauth2.Config, googleCalendarService *services.GoogleC
 			})
 		}
 
-		// Guardar las credenciales en la base de datos
-		if err := googleCalendarService.SaveCredentials(assistantID, token, googleUserID); err != nil {
+		// Guardar las credenciales
+		assistantIDInt, _ := strconv.Atoi(assistantID)
+		err = googleCalendarService.SaveCredentials(assistantIDInt, token, googleUserID)
+		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": "No se pudieron guardar las credenciales",
 			})
 		}
 
-		return c.JSON(fiber.Map{
-			"message":       "Autenticación exitosa",
-			"access_token":  token.AccessToken,
-			"refresh_token": token.RefreshToken,
-			"expiry":        token.Expiry,
-		})
+		// Redirigir al usuario a la URL proporcionada con los parámetros adicionales
+		return c.Redirect(fmt.Sprintf("%s?status=success", redirectURL))
 	}
 }
