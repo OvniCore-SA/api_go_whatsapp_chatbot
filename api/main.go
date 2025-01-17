@@ -108,6 +108,9 @@ func main() {
 	BussinessService := services.NewBussinessService(BussinessRepository)
 	BussinessController := controllers.NewBussinessController(BussinessService)
 
+	GoogleCalendarRepository := mysql_client.NewGoogleCalendarCredentialsRepository(db)
+	GoogleCalendarService := services.NewGoogleCalendarService(GoogleCalendarRepository)
+
 	// Start procesos automaticos
 	autoProcess := services.NewAutoProcessService(WhatsappService)
 	err = autoProcess.Start()
@@ -138,7 +141,7 @@ func main() {
 	app.Use(meddlewares.SecureHeadersMiddleware())
 
 	// Configuración de TODAS las rutas
-	routes.Setup(app, &meddlewares, AuthController, FileController, AssistantController, BussinessController, UsersController, LogsController, Password_resetsController, RolesController, PermissionsController, WhatsappController, NumberPhonesController, TelegramController, OauthConfig)
+	routes.Setup(app, &meddlewares, AuthController, FileController, AssistantController, BussinessController, UsersController, LogsController, Password_resetsController, RolesController, PermissionsController, WhatsappController, NumberPhonesController, TelegramController, OauthConfig, GoogleCalendarService)
 
 	log.Fatal(app.Listen(":" + os.Getenv("APP_PORT")))
 }

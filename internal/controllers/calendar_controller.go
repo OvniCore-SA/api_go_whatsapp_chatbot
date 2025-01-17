@@ -1,10 +1,8 @@
 package controllers
 
 import (
-	"log"
 	"time"
 
-	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/services"
 	"github.com/gofiber/fiber/v2"
 	"golang.org/x/oauth2"
@@ -118,50 +116,53 @@ func HandleAuthCallback(config *oauth2.Config) fiber.Handler {
 	}
 }
 
-// GetAuthToken procesa el código de autorización y genera el token de acceso.
-func GetAuthToken(config *oauth2.Config) fiber.Handler {
+func GetAuthToken(config *oauth2.Config, googleCalendarService *services.GoogleCalendarService) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-
-		// Imprime la URL completa de la solicitud
-		log.Println("URL completa de la solicitud:")
-		log.Println(c.OriginalURL())
-
-		// Imprime el cuerpo de la solicitud
-		log.Println("Body recibido:")
-		log.Println(string(c.Body()))
-
-		// Captura el código de autorización desde los parámetros de consulta
+		// Capturar el código de autorización desde la URL
 		code := c.Query("code")
 		if code == "" {
-			log.Println("code: ", code)
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 				"error": "El parámetro 'code' es obligatorio",
 			})
 		}
 
-		var req dtos.RequestRedirectGoogleAuth
-		err := c.QueryParser(&req)
-		if err != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"error":   "No se pudo parsear la respuesta",
-				"message": "No se pudo parsear la respuesta",
-			})
-		}
-		log.Println(req)
-
-		token, err := services.ExchangeCodeForToken(config, code)
+		// Intercambiar el código por un token
+		token, err := config.Exchange(c.Context(), code)
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": "No se pudo generar el token",
 			})
 		}
 
+		// Capturar el assistant_id desde la URL o el cuerpo
+		assistantID := c.QueryInt("assistant_id")
+		if assistantID <= 0 {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": "El parámetro 'assistant_id' es obligatorio",
+			})
+		}
+
+		// Obtener información del usuario con el token
+		client := config.Client(c.Context(), token)
+		googleUserID, err := services.GetGoogleUserID(client)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "No se pudo obtener el ID del usuario de Google",
+			})
+		}
+
+		// Guardar las credenciales en la base de datos
+		if err := googleCalendarService.SaveCredentials(assistantID, token, googleUserID); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "No se pudieron guardar las credenciales",
+			})
+		}
+
 		return c.JSON(fiber.Map{
+			"message":       "Autenticación exitosa",
 			"access_token":  token.AccessToken,
-			"expiry":        token.Expiry,
-			"token_type":    token.TokenType,
 			"refresh_token": token.RefreshToken,
-			"expires_in":    token.ExpiresIn,
+			"expiry":        token.Expiry,
 		})
 	}
 }

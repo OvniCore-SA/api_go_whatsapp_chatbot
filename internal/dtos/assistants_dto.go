@@ -7,18 +7,19 @@ import (
 )
 
 type AssistantDto struct {
-	ID                 int64            `json:"id"`
-	BussinessID        int64            `json:"bussiness_id"`
-	Name               string           `json:"name"`
-	OpenaiAssistantsID string           `json:"openai_assistants_id,omitempty"`
-	Description        string           `json:"description,omitempty"`
-	Model              string           `json:"model,omitempty"`
-	Instructions       string           `json:"instructions,omitempty"`
-	Active             bool             `json:"active"`
-	Bussiness          BussinessDto     `json:"bussiness,omitempty"`
-	NumberPhones       []NumberPhoneDto `json:"number_phones,omitempty"` // DTO de NumberPhone para la relación de uno a muchos
-	CreatedAt          time.Time        `json:"created_at"`
-	UpdatedAt          time.Time        `json:"updated_at"`
+	ID                       int64                        `json:"id"`
+	BussinessID              int64                        `json:"bussiness_id"`
+	Name                     string                       `json:"name"`
+	OpenaiAssistantsID       string                       `json:"openai_assistants_id,omitempty"`
+	Description              string                       `json:"description,omitempty"`
+	Model                    string                       `json:"model,omitempty"`
+	Instructions             string                       `json:"instructions,omitempty"`
+	Active                   bool                         `json:"active"`
+	Bussiness                BussinessDto                 `json:"bussiness,omitempty"`
+	NumberPhones             []NumberPhoneDto             `json:"number_phones,omitempty"`              // DTO de NumberPhone para la relación de uno a muchos
+	GoogleCalendarCredential *GoogleCalendarCredentialDto `json:"google_calendar_credential,omitempty"` // Relación con Google Calendar
+	CreatedAt                time.Time                    `json:"created_at"`
+	UpdatedAt                time.Time                    `json:"updated_at"`
 }
 
 func (dto *AssistantDto) ValidateAssistantDto(isCreate bool) error {
@@ -44,7 +45,7 @@ func (dto *AssistantDto) ValidateAssistantDto(isCreate bool) error {
 	}
 
 	if len(dto.Instructions) < 10 {
-		return errors.New("la instruccion debe tener por lo menos 10 caracteres")
+		return errors.New("la instrucción debe tener por lo menos 10 caracteres")
 	}
 
 	if len(dto.Description) < 10 {
@@ -58,11 +59,30 @@ func (dto *AssistantDto) ValidateAssistantDto(isCreate bool) error {
 		}
 
 		if len(dto.Model) < 2 {
-			return errors.New("el model debe tener por lo menos 2 caracteres")
+			return errors.New("el modelo debe tener por lo menos 2 caracteres")
 		}
 
 		if dto.ID <= 0 {
 			return errors.New("el ID del asistente es obligatorio al editar")
+		}
+	}
+
+	// Validar GoogleCalendarCredential si está presente
+	if dto.GoogleCalendarCredential != nil {
+		if dto.GoogleCalendarCredential.GoogleUserID == "" {
+			return errors.New("google_user_id es obligatorio en google_calendar_credential")
+		}
+
+		if dto.GoogleCalendarCredential.AccessToken == "" {
+			return errors.New("access_token es obligatorio en google_calendar_credential")
+		}
+
+		if dto.GoogleCalendarCredential.RefreshToken == "" {
+			return errors.New("refresh_token es obligatorio en google_calendar_credential")
+		}
+
+		if dto.GoogleCalendarCredential.TokenExpiry.IsZero() {
+			return errors.New("token_expiry es obligatorio en google_calendar_credential")
 		}
 	}
 
