@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -182,8 +183,9 @@ func GetAuthToken(config *oauth2.Config, googleCalendarService *services.GoogleC
 		client := config.Client(c.Context(), token)
 		googleUserID, err := services.GetGoogleUserID(client)
 		if err != nil {
+			log.Println(err)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": "No se pudo obtener el ID del usuario de Google",
+				"error": "No se pudo obtener el ID del usuario de Google" + err.Error(),
 			})
 		}
 
