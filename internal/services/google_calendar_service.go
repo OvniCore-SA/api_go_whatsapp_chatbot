@@ -60,17 +60,29 @@ func (s *GoogleCalendarService) DeleteCredentials(assistantID int) error {
 }
 
 // GetGoogleUserID obtiene el ID único del usuario de Google
-func GetGoogleUserID(client *http.Client) (string, error) {
-	resp, err := client.Get("https://www.googleapis.com/oauth2/v1/userinfo?alt=json")
+func GetGoogleUserID(client *http.Client, accessToken string) (string, error) {
+	// Crear una solicitud HTTP con el token de autenticación
+	req, err := http.NewRequest("GET", "https://www.googleapis.com/oauth2/v1/userinfo?alt=json", nil)
+	if err != nil {
+		return "", err
+	}
+
+	// Agregar el token de autenticación en el encabezado Authorization
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+
+	// Ejecutar la solicitud
+	resp, err := client.Do(req)
 	if err != nil {
 		return "", err
 	}
 	defer resp.Body.Close()
 
+	// Verificar el código de estado de la respuesta
 	if resp.StatusCode != http.StatusOK {
 		return "", errors.New("error al obtener la información del usuario de Google")
 	}
 
+	// Decodificar la respuesta JSON
 	var result struct {
 		ID string `json:"id"`
 	}
@@ -78,5 +90,6 @@ func GetGoogleUserID(client *http.Client) (string, error) {
 		return "", err
 	}
 
+	// Retornar el ID del usuario
 	return result.ID, nil
 }
