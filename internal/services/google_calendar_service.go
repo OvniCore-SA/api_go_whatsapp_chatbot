@@ -80,6 +80,7 @@ func GetGoogleUserID(client *http.Client, accessToken string) (string, error) {
 
 	// Verificar el código de estado de la respuesta
 	if resp.StatusCode != http.StatusOK {
+		log.Printf("\n\n respStatusCode: %d", resp.StatusCode)
 		log.Printf("code: %d", http.StatusOK)
 		return "", errors.New("error al obtener la información del usuario de Google")
 	}
