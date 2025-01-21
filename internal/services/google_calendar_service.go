@@ -83,7 +83,8 @@ func GetGoogleUserID(client *http.Client, token *oauth2.Token) (string, error) {
 		log.Printf("\n\n respStatusCode: %d", resp.StatusCode)
 		log.Printf("code: %d", http.StatusOK)
 
-		req.Header.Set("Authorization", "Bearer "+token.AccessToken)
+		req.Header.Set("Authorization", "Bearer "+token.RefreshToken)
+		log.Printf("\nRefreshToken: %d", http.StatusOK)
 		// Ejecutar la solicitud
 		resp, err = client.Do(req)
 		if err != nil {
