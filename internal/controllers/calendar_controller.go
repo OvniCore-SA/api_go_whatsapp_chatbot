@@ -182,7 +182,7 @@ func GetAuthToken(config *oauth2.Config, googleCalendarService *services.GoogleC
 		fmt.Println("AccessToken GOOGLE: " + token.AccessToken)
 		// Obtener información del usuario con el token
 		client := config.Client(c.Context(), token)
-		googleUserID, err := services.GetGoogleUserID(client, token.AccessToken)
+		googleUserID, err := services.GetGoogleUserID(client, token)
 		if err != nil {
 			log.Println(err)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
