@@ -81,17 +81,16 @@ func GetGoogleUserID(client *http.Client, token *oauth2.Token) (string, error) {
 	// Verificar el código de estado de la respuesta
 	if resp.StatusCode != http.StatusOK {
 		log.Printf("\n\n respStatusCode: %d", resp.StatusCode)
-		log.Printf("code: %d", http.StatusOK)
 
 		req.Header.Set("Authorization", "Bearer "+token.RefreshToken)
-		log.Printf("\nRefreshToken: %d", http.StatusOK)
+		log.Printf("\nRefreshToken: %s", token.RefreshToken)
 		// Ejecutar la solicitud
 		resp, err = client.Do(req)
 		if err != nil {
 			log.Println(resp.StatusCode)
 			return "", err
 		}
-		log.Println(resp.StatusCode)
+		log.Println("Segunda consulta: %d", resp.StatusCode)
 
 		return "", errors.New("error al obtener la información del usuario de Google")
 	}
