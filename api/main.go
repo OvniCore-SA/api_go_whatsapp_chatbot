@@ -67,7 +67,9 @@ func main() {
 	TelegramService := services.NewTelegramService()
 	TelegramController := controllers.NewTelegramController(TelegramService, &InstanceTelegram)
 
-	go TelegramService.RunTelegramGoRoutine(&InstanceTelegram)
+	if os.Getenv("HOST_API") == "https://api-botcore.ovnicore.com" {
+		go TelegramService.RunTelegramGoRoutine(&InstanceTelegram)
+	}
 
 	// Instancio api de OPEN AI
 	OpenAIAssistantClient := services.NewOpenAIAssistantService(os.Getenv("OPENAI_API_KEY"))

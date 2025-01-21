@@ -179,6 +179,7 @@ func GetAuthToken(config *oauth2.Config, googleCalendarService *services.GoogleC
 				"error": "No se pudo generar el token",
 			})
 		}
+		fmt.Println("AccessToken GOOGLE: " + token.AccessToken)
 		// Obtener información del usuario con el token
 		client := config.Client(c.Context(), token)
 		googleUserID, err := services.GetGoogleUserID(client)
