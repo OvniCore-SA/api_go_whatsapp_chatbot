@@ -3,6 +3,7 @@ package services
 import (
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities"
@@ -79,6 +80,7 @@ func GetGoogleUserID(client *http.Client, accessToken string) (string, error) {
 
 	// Verificar el código de estado de la respuesta
 	if resp.StatusCode != http.StatusOK {
+		log.Printf("code: %d", http.StatusOK)
 		return "", errors.New("error al obtener la información del usuario de Google")
 	}
 
