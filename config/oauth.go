@@ -18,7 +18,7 @@ func LoadOAuthConfig() *oauth2.Config {
 
 	fmt.Println("Archivo de autenticación GOOGLE cargado exitosamente.")
 
-	config, err := google.ConfigFromJSON(credentials, "https://www.googleapis.com/auth/calendar.readonly")
+	config, err := google.ConfigFromJSON(credentials, "https://www.googleapis.com/auth/calendar.readonly", "https://www.googleapis.com/auth/userinfo.profile")
 	if err != nil {
 		log.Fatalf("No se pudo parsear el archivo de credenciales: %v", err)
 	}
