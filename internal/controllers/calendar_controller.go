@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"strconv"
@@ -11,69 +12,221 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"golang.org/x/oauth2"
 	"google.golang.org/api/calendar/v3"
-	"google.golang.org/api/option"
 )
 
 // GetCalendarEvents obtiene los eventos del calendario.
-func GetCalendarEvents(config *oauth2.Config) fiber.Handler {
+func GetCalendarEventsByDate(service *services.GoogleCalendarService, config *oauth2.Config) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		// Cargar el token desde el archivo
-		token, err := services.LoadToken("token.json")
+		assistantID, err := parseAssistantID(c.Query("assistant_id"))
 		if err != nil {
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-				"error": "No estás autenticado",
-			})
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 		}
 
-		// Crear cliente HTTP autenticado
-		client := config.Client(c.Context(), token)
+		startDateStr := c.Query("start_date") // Fecha inicial en formato "dd-mm-aaaa"
+		endDateStr := c.Query("end_date")     // Fecha final en formato "dd-mm-aaaa"
 
-		// Crear servicio de Google Calendar
-		srv, err := calendar.NewService(c.Context(), option.WithHTTPClient(client))
+		startDate, err := time.Parse("02-01-2006", startDateStr)
 		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": "No se pudo crear el servicio de Google Calendar",
-			})
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid start_date format.(sended dd-mm-aaaa)"})
 		}
 
-		// Obtener eventos
-		now := time.Now().Format(time.RFC3339)
-		events, err := srv.Events.List("primary").
-			ShowDeleted(false).
-			SingleEvents(true).
-			TimeMin(now).
-			MaxResults(10).
-			OrderBy("startTime").
-			Do()
+		endDate, err := time.Parse("02-01-2006", endDateStr)
 		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": "No se pudieron obtener los eventos",
-			})
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid end_date format.(sended dd-mm-aaaa)"})
+		}
+
+		token, err := service.GetOrRefreshToken(assistantID, config, c.Context())
+		if err != nil {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": err.Error()})
+		}
+
+		events, err := service.FetchGoogleCalendarEventsByDate(token, c.Context(), startDate, endDate)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 		}
 
 		if len(events.Items) == 0 {
 			return c.JSON(fiber.Map{
-				"events": "No se encontraron próximos eventos.",
-			})
-		}
-
-		// Formatear la respuesta
-		var result []fiber.Map
-		for _, item := range events.Items {
-			dateTime := item.Start.DateTime
-			if dateTime == "" {
-				dateTime = item.Start.Date
-			}
-			result = append(result, fiber.Map{
-				"summary": item.Summary,
-				"start":   dateTime,
+				"status":  true,
+				"data":    nil,
+				"message": "No se encontraron eventos en el rango especificado.",
 			})
 		}
 
 		return c.JSON(fiber.Map{
-			"events": result,
+			"message": "Eventos obtenidos con éxito.",
+			"data":    formatEvents(events.Items),
+			"status":  true,
 		})
 	}
+}
+
+// AddCalendarEvent crea un nuevo evento en Google Calendar.
+func AddCalendarEvent(service *services.GoogleCalendarService, config *oauth2.Config) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		assistantID, err := parseAssistantID(c.Query("assistant_id"))
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+		}
+
+		var eventRequest struct {
+			Summary     string `json:"summary"`
+			Description string `json:"description"`
+			Start       string `json:"start"` // Fecha y hora en formato RFC3339
+			End         string `json:"end"`   // Fecha y hora en formato RFC3339
+		}
+
+		if err := c.BodyParser(&eventRequest); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request body"})
+		}
+
+		// Validar las fechas
+		startTime, err := time.Parse(time.RFC3339, eventRequest.Start)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid start date format"})
+		}
+
+		endTime, err := time.Parse(time.RFC3339, eventRequest.End)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid end date format"})
+		}
+
+		token, err := service.GetOrRefreshToken(assistantID, config, c.Context())
+		if err != nil {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": err.Error()})
+		}
+
+		// Crear el evento
+		event := &calendar.Event{
+			Summary:     eventRequest.Summary,
+			Description: eventRequest.Description,
+			Start: &calendar.EventDateTime{
+				DateTime: startTime.Format(time.RFC3339),
+				TimeZone: "UTC",
+			},
+			End: &calendar.EventDateTime{
+				DateTime: endTime.Format(time.RFC3339),
+				TimeZone: "UTC",
+			},
+		}
+
+		createdEvent, err := service.CreateGoogleCalendarEvent(token, c.Context(), event)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		}
+
+		return c.JSON(fiber.Map{
+			"message": "Evento creado con éxito.",
+			"data":    createdEvent,
+			"status":  true,
+		})
+	}
+}
+
+func InsertCalendarEvent(service *services.GoogleCalendarService, config *oauth2.Config) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		assistantID, err := parseAssistantID(c.Query("assistant_id"))
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+		}
+
+		eventDateStr := c.Query("event_date")      // Fecha del evento en formato "dd-mm-aaaa"
+		eventTitle := c.Query("title")             // Título del evento
+		eventDescription := c.Query("description") // Descripción del evento
+
+		eventDate, err := time.Parse("02-01-2006", eventDateStr)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid event_date format"})
+		}
+
+		token, err := service.GetOrRefreshToken(assistantID, config, c.Context())
+		if err != nil {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": err.Error()})
+		}
+
+		event := &calendar.Event{
+			Summary:     eventTitle,
+			Description: eventDescription,
+			Start: &calendar.EventDateTime{
+				DateTime: eventDate.Format(time.RFC3339),
+			},
+			End: &calendar.EventDateTime{
+				DateTime: eventDate.Add(1 * time.Hour).Format(time.RFC3339),
+			},
+		}
+
+		err = service.InsertGoogleCalendarEvent(token, c.Context(), event)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		}
+
+		return c.JSON(fiber.Map{
+			"message": "Evento registrado con éxito.",
+			"status":  true,
+		})
+	}
+}
+
+func parseAssistantID(assistantIDStr string) (int, error) {
+	if assistantIDStr == "" {
+		return 0, errors.New("el parámetro assistant_id es obligatorio")
+	}
+	return strconv.Atoi(assistantIDStr)
+}
+
+// func formatEvents(events []*calendar.Event) []fiber.Map {
+// 	var result []fiber.Map
+// 	for _, item := range events {
+// 		start := item.Start.DateTime
+// 		if start == "" {
+// 			start = item.Start.Date
+// 		}
+// 		end := item.End.DateTime
+// 		if end == "" {
+// 			end = item.End.Date
+// 		}
+
+// 		result = append(result, fiber.Map{
+// 			"id":            item.Id,
+// 			"title":         item.Summary,
+// 			"description":   item.Description,
+// 			"location":      item.Location,
+// 			"start":         start,
+// 			"end":           end,
+// 			"attendees":     extractAttendees(item.Attendees),
+// 			"organizer":     item.Organizer.DisplayName,
+// 			"html_link":     item.HtmlLink,
+// 			"conference":    extractConferenceData(item.ConferenceData),
+// 			"event_type":    item.EventType,
+// 			"visibility":    item.Visibility,
+// 			"creation_time": item.Created,
+// 		})
+// 	}
+// 	return result
+// }
+
+func extractAttendees(attendees []*calendar.EventAttendee) []string {
+	var attendeeNames []string
+	for _, attendee := range attendees {
+		if attendee.DisplayName != "" {
+			attendeeNames = append(attendeeNames, attendee.DisplayName)
+		} else {
+			attendeeNames = append(attendeeNames, attendee.Email)
+		}
+	}
+	return attendeeNames
+}
+
+func extractConferenceData(data *calendar.ConferenceData) string {
+	if data == nil || data.EntryPoints == nil {
+		return ""
+	}
+	for _, entry := range data.EntryPoints {
+		if entry.Uri != "" {
+			return entry.Uri
+		}
+	}
+	return ""
 }
 
 // GetAuthURL genera la URL de autenticación de Google.
@@ -202,4 +355,34 @@ func GetAuthToken(config *oauth2.Config, googleCalendarService *services.GoogleC
 		// Redirigir al usuario a la URL proporcionada con los parámetros adicionales
 		return c.Redirect(fmt.Sprintf("%s?status=success", redirectURL))
 	}
+}
+
+func formatEvents(events []*calendar.Event) []fiber.Map {
+	var result []fiber.Map
+	for _, event := range events {
+		start := parseEventDate(event.Start)
+		end := parseEventDate(event.End)
+
+		result = append(result, fiber.Map{
+			"title":       event.Summary,
+			"description": event.Description,
+			"start":       start,
+			"end":         end,
+			"location":    event.Location,
+			"link":        event.HtmlLink,
+		})
+	}
+	return result
+}
+
+func parseEventDate(eventDateTime *calendar.EventDateTime) string {
+	if eventDateTime.DateTime != "" {
+		t, _ := time.Parse(time.RFC3339, eventDateTime.DateTime)
+		return t.Format("02-01-2006 15:04")
+	}
+	if eventDateTime.Date != "" {
+		t, _ := time.Parse("2006-01-02", eventDateTime.Date)
+		return t.Format("02-01-2006")
+	}
+	return "Fecha desconocida"
 }

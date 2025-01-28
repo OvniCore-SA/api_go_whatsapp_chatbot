@@ -189,10 +189,48 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 		return fmt.Errorf("error saving contact message: %v", err)
 	}
 
+	// Si el assistant tiene cuenta de google calendar configurada, se va interpretar el mensaje
+	if assistant.AccountGoogle {
+		text += "\n===============FIN MENSAJE DE USUARIO================\n\nPor favor, si el usuario consulta por turnos, eventos, horarios o cualquier otra cosa que pueda interpretarse para buscar disponibilidad en Google Calendar, responde SOLAMENTE con 'getEvents\\ndd-mm-aaaa', donde 'dd-mm-aaaa' es la fecha especificada o implícita en la consulta del usuario. \n\nSi el usuario desea registrar una reunión y envía una fecha en su mensaje, responde SOLAMENTE con 'insertEvents\\ndd-mm-aaaa', donde 'dd-mm-aaaa' es la fecha proporcionada por el usuario. No agregues ningún otro texto ni explicación."
+	}
+
 	// Enviar el mensaje a OpenAI
 	response, err := service.InteractWithAssistant(threadID, assistant.OpenaiAssistantsID, text)
 	if err != nil {
 		return fmt.Errorf("error sending message to OpenAI: %v", err)
+	}
+
+	if assistant.AccountGoogle {
+		// Procesar la respuesta del asistente
+		responseParts := strings.Split(strings.TrimSpace(response), "\\n")
+		if len(responseParts) != 2 {
+			return fmt.Errorf("invalid response format from assistant")
+		}
+
+		action := responseParts[0]
+		date := responseParts[1]
+
+		// Validar formato de la fecha (dd-mm-aaaa)
+		if !isValidDate(date) {
+			return fmt.Errorf("invalid date format in response: %s", date)
+		}
+
+		switch action {
+		case "getEvents":
+			// Consultar eventos en Google Calendar para la fecha especificada
+			// err := handleCalendarQuery(assistant, date)
+			// if err != nil {
+			// 	return fmt.Errorf("error fetching calendar events: %v", err)
+			// }
+		case "insertEvents":
+			// Registrar un nuevo evento en Google Calendar para la fecha especificada
+			// err := handleEventInsertion(assistant, date)
+			// if err != nil {
+			// 	return fmt.Errorf("error inserting calendar event: %v", err)
+			// }
+		default:
+			return fmt.Errorf("unknown action in response: %s", action)
+		}
 	}
 
 	// Guardar el mensaje del contacto en la base de datos

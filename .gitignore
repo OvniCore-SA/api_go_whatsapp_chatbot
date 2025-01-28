@@ -1,3 +1,5 @@
 config/env.go
 .env
 api/.env
+
+client_secret_46545_OVNICORE.json

@@ -110,7 +110,7 @@ func main() {
 	BussinessService := services.NewBussinessService(BussinessRepository)
 	BussinessController := controllers.NewBussinessController(BussinessService)
 
-	GoogleCalendarRepository := mysql_client.NewGoogleCalendarCredentialsRepository(db)
+	GoogleCalendarRepository := mysql_client.NewGoogleCalendarConfigsRepository(db)
 	GoogleCalendarService := services.NewGoogleCalendarService(GoogleCalendarRepository)
 
 	// Start procesos automaticos

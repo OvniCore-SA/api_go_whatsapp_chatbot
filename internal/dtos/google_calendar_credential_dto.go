@@ -2,7 +2,7 @@ package dtos
 
 import "time"
 
-type GoogleCalendarCredentialDto struct {
+type GoogleCalendarConfigDto struct {
 	ID           int       `json:"id"`
 	AssistantsID int       `json:"assistants_id"`
 	GoogleUserID string    `json:"google_user_id"` // ID único del usuario en Google

@@ -5,16 +5,16 @@ import (
 	"gorm.io/gorm"
 )
 
-type GoogleCalendarCredentialsRepository struct {
+type GoogleCalendarConfigsRepository struct {
 	db *gorm.DB
 }
 
-func NewGoogleCalendarCredentialsRepository(db *gorm.DB) *GoogleCalendarCredentialsRepository {
-	return &GoogleCalendarCredentialsRepository{db: db}
+func NewGoogleCalendarConfigsRepository(db *gorm.DB) *GoogleCalendarConfigsRepository {
+	return &GoogleCalendarConfigsRepository{db: db}
 }
 
 // Create saves Google Calendar credentials into the database
-func (r *GoogleCalendarCredentialsRepository) Create(data *entities.GoogleCalendarCredential) error {
+func (r *GoogleCalendarConfigsRepository) Create(data *entities.GoogleCalendarConfig) error {
 	if err := r.db.Create(data).Error; err != nil {
 		return err
 	}
@@ -22,8 +22,8 @@ func (r *GoogleCalendarCredentialsRepository) Create(data *entities.GoogleCalend
 }
 
 // FindByAssistantID retrieves credentials for a specific assistant
-func (r *GoogleCalendarCredentialsRepository) FindByAssistantID(assistantID int) (*entities.GoogleCalendarCredential, error) {
-	var credential entities.GoogleCalendarCredential
+func (r *GoogleCalendarConfigsRepository) FindByAssistantID(assistantID int) (*entities.GoogleCalendarConfig, error) {
+	var credential entities.GoogleCalendarConfig
 	err := r.db.Where("assistants_id = ?", assistantID).First(&credential).Error
 	if err != nil {
 		return nil, err
@@ -32,7 +32,7 @@ func (r *GoogleCalendarCredentialsRepository) FindByAssistantID(assistantID int)
 }
 
 // Update updates the credentials for a specific assistant
-func (r *GoogleCalendarCredentialsRepository) Update(data *entities.GoogleCalendarCredential) error {
+func (r *GoogleCalendarConfigsRepository) Update(data *entities.GoogleCalendarConfig) error {
 	if err := r.db.Save(data).Error; err != nil {
 		return err
 	}
@@ -40,8 +40,8 @@ func (r *GoogleCalendarCredentialsRepository) Update(data *entities.GoogleCalend
 }
 
 // Delete deletes the credentials for a specific assistant
-func (r *GoogleCalendarCredentialsRepository) Delete(assistantID int) error {
-	err := r.db.Where("assistants_id = ?", assistantID).Delete(&entities.GoogleCalendarCredential{}).Error
+func (r *GoogleCalendarConfigsRepository) Delete(assistantID int) error {
+	err := r.db.Where("assistants_id = ?", assistantID).Delete(&entities.GoogleCalendarConfig{}).Error
 	if err != nil {
 		return err
 	}
