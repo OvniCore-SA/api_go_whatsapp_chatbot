@@ -180,36 +180,6 @@ func GetGoogleUserID(client *http.Client, token *oauth2.Token) (string, error) {
 	return result.ID, nil
 }
 
-func (s *GoogleCalendarService) GetOrRefreshToken(assistantID int, config *oauth2.Config, ctx context.Context) (*oauth2.Token, error) {
-	credentials, err := s.GetCredentials(assistantID)
-	if err != nil {
-		return nil, err
-	}
-
-	token := &oauth2.Token{
-		AccessToken:  credentials.AccessToken,
-		RefreshToken: credentials.RefreshToken,
-		Expiry:       credentials.TokenExpiry,
-	}
-
-	if token.Expiry.Before(time.Now()) {
-		tokenSource := config.TokenSource(ctx, token)
-		newToken, err := tokenSource.Token()
-		if err != nil {
-			return nil, err
-		}
-
-		err = s.SaveCredentials(assistantID, newToken, credentials.GoogleUserID)
-		if err != nil {
-			return nil, err
-		}
-
-		return newToken, nil
-	}
-
-	return token, nil
-}
-
 func (s *GoogleCalendarService) FetchGoogleCalendarEventsByDate(token *oauth2.Token, ctx context.Context, startDate, endDate time.Time) (*calendar.Events, error) {
 	client := oauth2.NewClient(ctx, oauth2.StaticTokenSource(token))
 	srv, err := calendar.NewService(ctx, option.WithHTTPClient(client))
@@ -252,4 +222,34 @@ func (s *GoogleCalendarService) FetchGoogleCalendarEvents(token *oauth2.Token, c
 		MaxResults(10).
 		OrderBy("startTime").
 		Do()
+}
+
+func (s *GoogleCalendarService) GetOrRefreshToken(assistantID int, config *oauth2.Config, ctx context.Context) (*oauth2.Token, error) {
+	credentials, err := s.GetCredentials(assistantID)
+	if err != nil {
+		return nil, err
+	}
+
+	token := &oauth2.Token{
+		AccessToken:  credentials.AccessToken,
+		RefreshToken: credentials.RefreshToken,
+		Expiry:       credentials.TokenExpiry,
+	}
+
+	if token.Expiry.Before(time.Now()) {
+		tokenSource := config.TokenSource(ctx, token)
+		newToken, err := tokenSource.Token()
+		if err != nil {
+			return nil, err
+		}
+
+		err = s.SaveCredentials(assistantID, newToken, credentials.GoogleUserID)
+		if err != nil {
+			return nil, err
+		}
+
+		return newToken, nil
+	}
+
+	return token, nil
 }
