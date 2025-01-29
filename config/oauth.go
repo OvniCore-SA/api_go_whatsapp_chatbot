@@ -7,6 +7,7 @@ import (
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
+	"google.golang.org/api/calendar/v3"
 )
 
 // LoadOAuthConfig carga la configuración de OAuth desde el archivo JSON.
@@ -18,7 +19,7 @@ func LoadOAuthConfig() *oauth2.Config {
 
 	fmt.Println("Archivo de autenticación GOOGLE cargado exitosamente.")
 
-	config, err := google.ConfigFromJSON(credentials, "https://www.googleapis.com/auth/calendar.events", "https://www.googleapis.com/auth/calendar.events.owned", "https://www.googleapis.com/auth/calendar.app.created", "https://www.googleapis.com/auth/calendar.readonly", "https://www.googleapis.com/auth/calendar.events", "https://www.googleapis.com/auth/calendar", "https://www.googleapis.com/auth/userinfo.profile", "")
+	config, err := google.ConfigFromJSON(credentials, calendar.CalendarEventsScope, calendar.CalendarReadonlyScope, calendar.CalendarScope, "https://www.googleapis.com/auth/calendar.events.owned", "https://www.googleapis.com/auth/calendar.app.created", "https://www.googleapis.com/auth/userinfo.profile")
 	if err != nil {
 		log.Fatalf("No se pudo parsear el archivo de credenciales: %v", err)
 	}

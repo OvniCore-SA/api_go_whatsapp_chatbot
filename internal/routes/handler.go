@@ -52,9 +52,13 @@ func Setup(app *fiber.App,
 	// Rutas de autenticación
 	app.Get("/auth/url", middleware.ValidarApikey(), controllers.GetAuthURL(OauthConfig))
 	app.Get("/auth/callback-auth", controllers.GetAuthToken(OauthConfig, GoogleCalendarService))
+
 	// Endpoint para obtener eventos del calendario
 	api.Get("/calendar/events", middleware.ValidarApikey(), controllers.GetCalendarEventsByDate(GoogleCalendarService, OauthConfig))
 	api.Post("/calendar/events", middleware.ValidarApikey(), controllers.AddCalendarEvent(GoogleCalendarService, OauthConfig))
+
+	api.Put("/calendar/events/:event_id", middleware.ValidarApikey(), controllers.UpdateCalendarEvent(GoogleCalendarService, OauthConfig))
+	api.Delete("/calendar/events/:event_id", middleware.ValidarApikey(), controllers.DeleteCalendarEvent(GoogleCalendarService, OauthConfig))
 
 	api.Get("/users", middleware.ValidarApikey(), UsersController.GetAll)
 	api.Get("/users/:id", middleware.ValidarApikey(), UsersController.GetById)

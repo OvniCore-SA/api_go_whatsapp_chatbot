@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	googlecalendar "github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos/googleCalendar"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/services"
 	"github.com/gofiber/fiber/v2"
 	"golang.org/x/oauth2"
@@ -69,26 +70,14 @@ func AddCalendarEvent(service *services.GoogleCalendarService, config *oauth2.Co
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 		}
 
-		var eventRequest struct {
-			Summary     string `json:"summary"`
-			Description string `json:"description"`
-			Start       string `json:"start"` // Fecha y hora en formato RFC3339
-			End         string `json:"end"`   // Fecha y hora en formato RFC3339
-		}
-
+		var eventRequest googlecalendar.EventRequest
 		if err := c.BodyParser(&eventRequest); err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request body"})
 		}
 
-		// Validar las fechas
-		startTime, err := time.Parse(time.RFC3339, eventRequest.Start)
+		err = eventRequest.Validate()
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid start date format"})
-		}
-
-		endTime, err := time.Parse(time.RFC3339, eventRequest.End)
-		if err != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid end date format"})
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 		}
 
 		token, err := service.GetOrRefreshToken(assistantID, config, c.Context())
@@ -101,11 +90,11 @@ func AddCalendarEvent(service *services.GoogleCalendarService, config *oauth2.Co
 			Summary:     eventRequest.Summary,
 			Description: eventRequest.Description,
 			Start: &calendar.EventDateTime{
-				DateTime: startTime.Format(time.RFC3339),
+				DateTime: eventRequest.Start,
 				TimeZone: "UTC",
 			},
 			End: &calendar.EventDateTime{
-				DateTime: endTime.Format(time.RFC3339),
+				DateTime: eventRequest.End,
 				TimeZone: "UTC",
 			},
 		}
@@ -162,6 +151,79 @@ func InsertCalendarEvent(service *services.GoogleCalendarService, config *oauth2
 
 		return c.JSON(fiber.Map{
 			"message": "Evento registrado con éxito.",
+			"status":  true,
+		})
+	}
+}
+
+// DeleteCalendarEvent elimina un evento del Google Calendar
+func DeleteCalendarEvent(service *services.GoogleCalendarService, config *oauth2.Config) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		assistantID, err := parseAssistantID(c.Query("assistant_id"))
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+		}
+
+		eventID := c.Params("event_id")
+		if eventID == "" {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "El event_id es requerido"})
+		}
+
+		token, err := service.GetOrRefreshToken(assistantID, config, c.Context())
+		if err != nil {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": err.Error()})
+		}
+
+		// Llamar al servicio para eliminar el evento
+		err = service.DeleteGoogleCalendarEvent(token, c.Context(), eventID)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		}
+
+		return c.JSON(fiber.Map{
+			"message": "Evento eliminado con éxito.",
+			"status":  true,
+		})
+	}
+}
+
+// UpdateCalendarEvent actualiza un evento en Google Calendar
+func UpdateCalendarEvent(service *services.GoogleCalendarService, config *oauth2.Config) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		assistantID, err := parseAssistantID(c.Query("assistant_id"))
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+		}
+
+		eventID := c.Params("event_id")
+		if eventID == "" {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "El event_id es requerido"})
+		}
+
+		var eventRequest googlecalendar.EventRequest
+		if err := c.BodyParser(&eventRequest); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cuerpo de solicitud inválido"})
+		}
+
+		err = eventRequest.Validate()
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+		}
+
+		token, err := service.GetOrRefreshToken(assistantID, config, c.Context())
+		if err != nil {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": err.Error()})
+		}
+
+		// Llamar al servicio para actualizar el evento
+		updatedEvent, err := service.UpdateGoogleCalendarEvent(token, c.Context(), eventID, &eventRequest)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		}
+
+		return c.JSON(fiber.Map{
+			"message": "Evento actualizado con éxito.",
+			"data":    updatedEvent,
 			"status":  true,
 		})
 	}
@@ -364,6 +426,7 @@ func formatEvents(events []*calendar.Event) []fiber.Map {
 		end := parseEventDate(event.End)
 
 		result = append(result, fiber.Map{
+			"id":          event.Id,
 			"title":       event.Summary,
 			"description": event.Description,
 			"start":       start,

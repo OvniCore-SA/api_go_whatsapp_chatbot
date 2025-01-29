@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	googlecalendar "github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos/googleCalendar"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/repositories/mysql_client"
 	"golang.org/x/oauth2"
@@ -78,6 +79,58 @@ func (s *GoogleCalendarService) CreateGoogleCalendarEvent(token *oauth2.Token, c
 	}
 
 	return createdEvent, nil
+}
+
+// DeleteGoogleCalendarEvent elimina un evento del Google Calendar
+func (s *GoogleCalendarService) DeleteGoogleCalendarEvent(token *oauth2.Token, ctx context.Context, eventID string) error {
+	client := oauth2.NewClient(ctx, oauth2.StaticTokenSource(token))
+	srv, err := calendar.NewService(ctx, option.WithHTTPClient(client))
+	if err != nil {
+		return err
+	}
+
+	// Eliminar el evento del calendario principal
+	err = srv.Events.Delete("primary", eventID).Do()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// UpdateGoogleCalendarEvent actualiza un evento en Google Calendar
+func (s *GoogleCalendarService) UpdateGoogleCalendarEvent(token *oauth2.Token, ctx context.Context, eventID string, eventRequest *googlecalendar.EventRequest) (*calendar.Event, error) {
+	client := oauth2.NewClient(ctx, oauth2.StaticTokenSource(token))
+	srv, err := calendar.NewService(ctx, option.WithHTTPClient(client))
+	if err != nil {
+		return nil, err
+	}
+
+	// Obtener el evento actual
+	event, err := srv.Events.Get("primary", eventID).Do()
+	if err != nil {
+		return nil, err
+	}
+
+	// Actualizar los campos
+	event.Summary = eventRequest.Summary
+	event.Description = eventRequest.Description
+	event.Start = &calendar.EventDateTime{
+		DateTime: eventRequest.Start,
+		TimeZone: "UTC",
+	}
+	event.End = &calendar.EventDateTime{
+		DateTime: eventRequest.End,
+		TimeZone: "UTC",
+	}
+
+	// Guardar los cambios en Google Calendar
+	updatedEvent, err := srv.Events.Update("primary", eventID, event).Do()
+	if err != nil {
+		return nil, err
+	}
+
+	return updatedEvent, nil
 }
 
 // GetGoogleUserID obtiene el ID único del usuario de Google
