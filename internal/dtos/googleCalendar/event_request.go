@@ -3,6 +3,8 @@ package googlecalendar
 import (
 	"errors"
 	"time"
+
+	"google.golang.org/api/calendar/v3"
 )
 
 type EventRequest struct {
@@ -39,4 +41,21 @@ func (e *EventRequest) Validate() error {
 	}
 
 	return nil
+}
+
+// Carga un request para enviar a la creacion de un evento en calendar.
+func UploadEventRequestCalendar(summary, description, startDate, endDate string) (calendarRequest *calendar.Event) {
+
+	return &calendar.Event{
+		Summary:     summary,
+		Description: description,
+		Start: &calendar.EventDateTime{
+			DateTime: startDate,
+			TimeZone: "UTC",
+		},
+		End: &calendar.EventDateTime{
+			DateTime: endDate,
+			TimeZone: "UTC",
+		},
+	}
 }

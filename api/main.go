@@ -104,14 +104,13 @@ func main() {
 	AssistantRepository := mysql_client.NewAssistantRepository(db)
 	AssistantService := services.NewAssistantService(AssistantRepository, FileService, OpenAIAssistantClient)
 	AssistantController := controllers.NewAssistantController(AssistantService)
-	WhatsappService := services.NewWhatsappService(UsersService, LogsService, OpenAIAssistantClient, UtilService, NumberPhonesService, MessageRepository, AssistantService, ConfigurationService)
+	GoogleCalendarRepository := mysql_client.NewGoogleCalendarConfigsRepository(db)
+	GoogleCalendarService := services.NewGoogleCalendarService(GoogleCalendarRepository)
+	WhatsappService := services.NewWhatsappService(UsersService, LogsService, OpenAIAssistantClient, UtilService, NumberPhonesService, MessageRepository, AssistantService, ConfigurationService, GoogleCalendarService, OauthConfig)
 	WhatsappController := controllers.NewWhatsappController(WhatsappService)
 	BussinessRepository := mysql_client.NewBussinessRepository(db)
 	BussinessService := services.NewBussinessService(BussinessRepository)
 	BussinessController := controllers.NewBussinessController(BussinessService)
-
-	GoogleCalendarRepository := mysql_client.NewGoogleCalendarConfigsRepository(db)
-	GoogleCalendarService := services.NewGoogleCalendarService(GoogleCalendarRepository)
 
 	// Start procesos automaticos
 	autoProcess := services.NewAutoProcessService(WhatsappService)

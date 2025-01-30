@@ -55,6 +55,7 @@ func MapAssistantToDto(a Assistant) dtos.AssistantDto {
 		Active:               a.Active,
 		Bussiness:            bussiness, // cargo el bussiness
 		GoogleCalendarConfig: googleCalendarCredential,
+		AccountGoogle:        a.AccountGoogle,
 	}
 }
 

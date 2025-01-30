@@ -2,6 +2,7 @@ package services
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -15,6 +16,8 @@ import (
 
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/config"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos"
+	googlecalendar "github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos/googleCalendar"
+	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos/openaiassistantdtos"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos/whatsapp"
 	metaapi "github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos/whatsapp/metaApi"
 	whatsappservicedto "github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos/whatsapp_service_DTO"
@@ -22,6 +25,7 @@ import (
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities/filters"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/repositories/mysql_client"
 	"golang.org/x/exp/rand"
+	"golang.org/x/oauth2"
 )
 
 type WhatsappService struct {
@@ -34,9 +38,11 @@ type WhatsappService struct {
 	messagesRepository     *mysql_client.MessagesRepository
 	assistantService       *AssistantService
 	configurationService   *ConfigurationsService
+	googleCalendarService  *GoogleCalendarService
+	oauthConfig            *oauth2.Config
 }
 
-func NewWhatsappService(usersService *UsersService, logsService *LogsService, openAIAssistantService *OpenAIAssistantService, utilService *UtilService, numberPhone *NumberPhonesService, messagesRepository *mysql_client.MessagesRepository, assistantService *AssistantService, configurationService *ConfigurationsService) *WhatsappService {
+func NewWhatsappService(usersService *UsersService, logsService *LogsService, openAIAssistantService *OpenAIAssistantService, utilService *UtilService, numberPhone *NumberPhonesService, messagesRepository *mysql_client.MessagesRepository, assistantService *AssistantService, configurationService *ConfigurationsService, googleCalendarService *GoogleCalendarService, oauthConfig *oauth2.Config) *WhatsappService {
 	return &WhatsappService{
 		usersService:           usersService,
 		logsService:            logsService,
@@ -47,6 +53,8 @@ func NewWhatsappService(usersService *UsersService, logsService *LogsService, op
 		messagesRepository:     messagesRepository,
 		assistantService:       assistantService,
 		configurationService:   configurationService,
+		googleCalendarService:  googleCalendarService,
+		oauthConfig:            oauthConfig,
 	}
 }
 
@@ -189,65 +197,170 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 		return fmt.Errorf("error saving contact message: %v", err)
 	}
 
-	// Si el assistant tiene cuenta de google calendar configurada, se va interpretar el mensaje
-	if assistant.AccountGoogle {
-		text += "\n===============FIN MENSAJE DE USUARIO================\n\nPor favor, si el usuario consulta por turnos, eventos, horarios o cualquier otra cosa que pueda interpretarse para buscar disponibilidad en Google Calendar, responde SOLAMENTE con 'getEvents\\ndd-mm-aaaa', donde 'dd-mm-aaaa' es la fecha especificada o implícita en la consulta del usuario. \n\nSi el usuario desea registrar una reunión y envía una fecha en su mensaje, responde SOLAMENTE con 'insertEvents\\ndd-mm-aaaa', donde 'dd-mm-aaaa' es la fecha proporcionada por el usuario. No agregues ningún otro texto ni explicación."
-	}
-
 	// Enviar el mensaje a OpenAI
 	response, err := service.InteractWithAssistant(threadID, assistant.OpenaiAssistantsID, text)
 	if err != nil {
 		return fmt.Errorf("error sending message to OpenAI: %v", err)
 	}
 
-	if assistant.AccountGoogle {
-		// Procesar la respuesta del asistente
-		responseParts := strings.Split(strings.TrimSpace(response), "\\n")
-		if len(responseParts) != 2 {
-			return fmt.Errorf("invalid response format from assistant")
+	// Este valor lo usaremos como respuesta "por defecto" en caso de error o fallback
+	responseUser := "Podrías ser más específico, por favor?"
+
+	// 2. Parsear la respuesta en la estructura AssistantResponse
+	assistantResp, err := parseAssistantResponse(response)
+	if err != nil {
+		// Si hay un error en el parseo, lo mostramos y devolvemos nil (o podrías manejarlo distinto)
+		fmt.Println("Error parseando la respuesta del Assistant:", err.Error())
+		// Guardamos en la base de datos la respuestaUser (fallback) y retornamos
+		if saveErr := saveMessageWithUniqueID(service, int(numberPhone.NumberPhone), int(contact.ID), response); saveErr != nil {
+			return fmt.Errorf("error saving fallback contact message: %v", saveErr)
 		}
 
-		action := responseParts[0]
-		date := responseParts[1]
-
-		// Validar formato de la fecha (dd-mm-aaaa)
-		if !isValidDate(date) {
-			return fmt.Errorf("invalid date format in response: %s", date)
+		// Enviar el fallback al usuario
+		contactToString := strconv.Itoa(int(contact.NumberPhone))
+		message := metaapi.NewSendMessageWhatsappBasic(response, contactToString)
+		sendErr := service.sendMessageBasic(message, strconv.FormatInt(numberPhone.WhatsappNumberPhoneId, 10), numberPhone.TokenPermanent)
+		if sendErr != nil {
+			return fmt.Errorf("error sending fallback response to user: %v", sendErr)
 		}
 
-		switch action {
-		case "getEvents":
-			// Consultar eventos en Google Calendar para la fecha especificada
-			// err := handleCalendarQuery(assistant, date)
-			// if err != nil {
-			// 	return fmt.Errorf("error fetching calendar events: %v", err)
-			// }
-		case "insertEvents":
-			// Registrar un nuevo evento en Google Calendar para la fecha especificada
-			// err := handleEventInsertion(assistant, date)
-			// if err != nil {
-			// 	return fmt.Errorf("error inserting calendar event: %v", err)
-			// }
-		default:
-			return fmt.Errorf("unknown action in response: %s", action)
-		}
+		return nil
 	}
 
-	// Guardar el mensaje del contacto en la base de datos
-	err = saveMessageWithUniqueID(service, int(numberPhone.NumberPhone), int(contact.ID), response)
+	// 3. Lógica según assistantResp.Function
+	switch assistantResp.Function {
+	case "getEvents":
+		// Solo ejecutamos si assistant.AccountGoogle == true (si no, ignoramos)
+		if assistant.AccountGoogle {
+			// start_date y end_date de Google Calendar
+			startDateStr := assistantResp.UserData.StartDate
+			endDateStr := assistantResp.UserData.EndDate
+
+			// Convertir strings a time.Time
+			startDate, err := time.Parse(time.RFC3339, startDateStr)
+			if err != nil {
+				return fmt.Errorf("error parsing start_date: %v", err)
+			}
+			endDate, err := time.Parse(time.RFC3339, endDateStr)
+			if err != nil {
+				return fmt.Errorf("error parsing end_date: %v", err)
+			}
+
+			// Obtener token Google
+			token, err := service.googleCalendarService.GetOrRefreshToken(
+				int(assistant.ID),
+				service.oauthConfig,
+				context.Background(),
+			)
+			if err != nil {
+				return err
+			}
+
+			// Buscar eventos en el rango
+			events, err := service.googleCalendarService.
+				FetchGoogleCalendarEventsByDate(token, context.Background(), startDate, endDate)
+			if err != nil {
+				return err
+			}
+
+			// Aquí puedes formatear la respuesta como quieras (por ejemplo, un string con los eventos)
+			// Ejemplo: responseUser = "Los eventos encontrados son: ..."
+			// En este ejemplo, simplemente los imprimimos.
+			fmt.Println(events)
+			responseUser = fmt.Sprintf("Eventos entre %s y %s: %v", startDateStr, endDateStr, events)
+		} else {
+			// Si no hay cuenta Google, devolvemos un mensaje por defecto
+			responseUser = "Lo siento, no tengo acceso a Google Calendar."
+		}
+
+	case "insertEvents":
+		// Solo ejecutamos si assistant.AccountGoogle == true
+		if assistant.AccountGoogle {
+			startDateStr := assistantResp.UserData.StartDate
+			endDateStr := assistantResp.UserData.EndDate
+
+			token, err := service.googleCalendarService.GetOrRefreshToken(
+				int(assistant.ID),
+				service.oauthConfig,
+				context.Background(),
+			)
+			if err != nil {
+				return err
+			}
+
+			// Podrías también usar assistantResp.UserData.Nombre, Email y Phone
+			// si los necesitas para el "summary" o "description".
+			event := googlecalendar.UploadEventRequestCalendar(
+				assistantResp.UserData.Nombre,
+				"Contacto: "+assistantResp.UserData.Email+"\n Tel: "+assistantResp.UserData.Phone,
+				startDateStr,
+				endDateStr,
+			)
+
+			_, err = service.googleCalendarService.
+				CreateGoogleCalendarEvent(token, context.Background(), event)
+			if err != nil {
+				return err
+			}
+
+			// Por ejemplo, supongamos que createdEvent.Created trae un string con info
+			responseUser = "Evento creado exitosamente: " + startDateStr
+		} else {
+			// Si no hay cuenta Google, devolvemos un mensaje por defecto
+			responseUser = "Lo siento, no tengo acceso a Google Calendar."
+		}
+
+	case "responseText":
+		// Respuesta normal (sin Calendar)
+		// El texto a mostrar al usuario viene en assistantResp.Message
+		responseUser = assistantResp.Message
+
+	default:
+		// Acción desconocida
+		return fmt.Errorf("unknown action in response: %s", assistantResp.Function)
+	}
+
+	// 4. Guardar la respuesta que le daremos al usuario
+	err = saveMessageWithUniqueID(service, int(numberPhone.NumberPhone), int(contact.ID), responseUser)
 	if err != nil {
 		return fmt.Errorf("error saving contact message: %v", err)
 	}
 
-	// Enviar la respuesta al usuario
+	// 5. Enviar la respuesta al usuario
 	contactToString := strconv.Itoa(int(contact.NumberPhone))
-	message := metaapi.NewSendMessageWhatsappBasic(response, contactToString)
+	message := metaapi.NewSendMessageWhatsappBasic(responseUser, contactToString)
 	err = service.sendMessageBasic(message, strconv.FormatInt(numberPhone.WhatsappNumberPhoneId, 10), numberPhone.TokenPermanent)
 	if err != nil {
 		return fmt.Errorf("error sending response to user: %v", err)
 	}
 
 	return nil
+}
+
+func parseAssistantResponse(response string) (assistantResp *openaiassistantdtos.AssistantJSONResponse, err error) {
+	// Elimina espacios en blanco extra
+	clean := strings.TrimSpace(response)
+
+	// Si empieza con ```json, quítalo
+	if strings.HasPrefix(clean, "```json") {
+		clean = strings.TrimPrefix(clean, "```json")
+	}
+	// Si acaba con ```, quítalo
+	if strings.HasSuffix(strings.TrimSpace(clean), "```") {
+		clean = strings.TrimSuffix(strings.TrimSpace(clean), "```")
+	}
+
+	// Vuelve a recortar espacios
+	clean = strings.TrimSpace(clean)
+
+	// Parseamos el JSON
+
+	err = json.Unmarshal([]byte(clean), &assistantResp)
+	if err != nil {
+		return nil, fmt.Errorf("error unmarshal: %v", err)
+	}
+
+	return assistantResp, nil
 }
 
 // Función para generar un string único

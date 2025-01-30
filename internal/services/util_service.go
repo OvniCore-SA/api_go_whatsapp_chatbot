@@ -29,6 +29,6 @@ func (utilService *UtilService) GetNumberEmoji(number int) string {
 }
 
 func isValidDate(date string) bool {
-	_, err := time.Parse("02-01-2006", date)
+	_, err := time.Parse("2006-01-02T15:04:05Z", date)
 	return err == nil
 }
