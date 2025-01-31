@@ -197,6 +197,16 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 		return fmt.Errorf("error saving contact message: %v", err)
 	}
 
+	loc, err := time.LoadLocation("America/Argentina/Buenos_Aires")
+	if err != nil {
+		return fmt.Errorf("error cargando la zona horaria: %v", err)
+	}
+	currentTime := time.Now().In(loc)
+
+	// Formatear la fecha y hora en un formato legible: "31 de enero de 2025 a las 15:04"
+	formattedTime := currentTime.Format("02/01/2006 15:04")
+	text += fmt.Sprintf("%s\n\n\nFecha y hora actual en Argentina: %s", text, formattedTime)
+
 	// Enviar el mensaje a OpenAI
 	response, err := service.InteractWithAssistant(threadID, assistant.OpenaiAssistantsID, text)
 	if err != nil {
@@ -290,21 +300,44 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 
 			// Podrías también usar assistantResp.UserData.Nombre, Email y Phone
 			// si los necesitas para el "summary" o "description".
-			event := googlecalendar.UploadEventRequestCalendar(
+			event, err := googlecalendar.UploadEventRequestCalendar(
 				assistantResp.UserData.Nombre,
 				"Contacto: "+assistantResp.UserData.Email+"\n Tel: "+assistantResp.UserData.Phone,
 				startDateStr,
 				endDateStr,
 			)
-
-			_, err = service.googleCalendarService.
-				CreateGoogleCalendarEvent(token, context.Background(), event)
 			if err != nil {
 				return err
 			}
 
-			// Por ejemplo, supongamos que createdEvent.Created trae un string con info
-			responseUser = "Evento creado exitosamente: " + startDateStr
+			_, err = service.googleCalendarService.CreateGoogleCalendarEvent(token, context.Background(), event)
+			if err != nil {
+				return err
+			}
+
+			// Parsear las fechas en el formato esperado
+			startDateTime, err := time.Parse("2006-01-02T15:04:05", startDateStr)
+			if err != nil {
+				fmt.Printf("Error al procesar la fecha de inicio: %v\n", err)
+				return err
+			}
+
+			endDateTime, err := time.Parse("2006-01-02T15:04:05", endDateStr)
+			if err != nil {
+				fmt.Printf("Error al procesar la fecha de finalización: %v\n", err)
+				return err
+			}
+
+			// Extraer componentes de la fecha
+			formattedStart := startDateTime.Format("02/01/2006 15:04")
+			formattedEnd := endDateTime.Format("02/01/2006 15:04")
+
+			// Mensaje de respuesta
+			responseUser = fmt.Sprintf(
+				"✅ ¡Tu turno ha sido agendado con éxito! 📅\n\n🕒 Inicio: %s \n🕒 Fin: %s.\n\nTe esperamos... ¡Que tengas un excelente día! 😊",
+				formattedStart, formattedEnd,
+			)
+
 		} else {
 			// Si no hay cuenta Google, devolvemos un mensaje por defecto
 			responseUser = "Lo siento, no tengo acceso a Google Calendar."

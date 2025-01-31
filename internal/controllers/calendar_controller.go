@@ -91,11 +91,11 @@ func AddCalendarEvent(service *services.GoogleCalendarService, config *oauth2.Co
 			Description: eventRequest.Description,
 			Start: &calendar.EventDateTime{
 				DateTime: eventRequest.Start,
-				TimeZone: "UTC",
+				TimeZone: "UTC-3",
 			},
 			End: &calendar.EventDateTime{
 				DateTime: eventRequest.End,
-				TimeZone: "UTC",
+				TimeZone: "UTC-3",
 			},
 		}
 
