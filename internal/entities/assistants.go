@@ -17,9 +17,9 @@ type Assistant struct {
 	Model              string
 	Instructions       string
 	// Horarios de trabajo
-	WorkStartTime            string                   `gorm:"type:varchar(5);not null"`  // Hora de inicio (HH:mm)
-	WorkEndTime              string                   `gorm:"type:varchar(5);not null"`  // Hora de fin (HH:mm)
-	DaysOpen                 string                   `gorm:"type:varchar(60);not null"` // Días abiertos como una lista (ejemplo: "lunes,martes,miercoles,jueves,viernes")
+	WorkStartTime            string                   `gorm:"type:varchar(5);"`  // Hora de inicio (HH:mm)
+	WorkEndTime              string                   `gorm:"type:varchar(5);"`  // Hora de fin (HH:mm)
+	DaysOpen                 string                   `gorm:"type:varchar(60);"` // Días abiertos como una lista (ejemplo: "lunes,martes,miercoles,jueves,viernes")
 	Active                   bool                     `gorm:"not null;default:true"`
 	AccountGoogle            bool                     `gorm:"default:false"`
 	NumberPhones             []NumberPhone            `gorm:"foreignKey:AssistantsID"`
