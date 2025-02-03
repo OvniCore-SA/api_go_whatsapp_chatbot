@@ -8,13 +8,14 @@ import (
 )
 
 type Bussines struct {
-	ID         int64  `gorm:"primaryKey;autoIncrement"`                                         // ID como clave primaria
-	UsersID    int64  `gorm:"not null"`                                                         // Relación con la entidad Users
-	User       Users  `gorm:"foreignKey:UsersID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"` // Relación con Users
-	Name       string `gorm:"not null"`
-	Address    string `gorm:"not null"`
-	CuilCuit   string
-	WebSite    string
+	ID       int64  `gorm:"primaryKey;autoIncrement"`                                         // ID como clave primaria
+	UsersID  int64  `gorm:"not null"`                                                         // Relación con la entidad Users
+	User     Users  `gorm:"foreignKey:UsersID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"` // Relación con Users
+	Name     string `gorm:"not null"`
+	Address  string `gorm:"not null"`
+	CuilCuit string
+	WebSite  string
+
 	Assistants []Assistant `gorm:"foreignKey:BussinessID"` // Relación de uno a muchos con Assistant
 	CreatedAt  time.Time
 	UpdatedAt  time.Time

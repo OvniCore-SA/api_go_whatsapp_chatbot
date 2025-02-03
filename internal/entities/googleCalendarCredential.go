@@ -9,11 +9,8 @@ type GoogleCalendarCredential struct {
 	AccessToken  string    `gorm:"type:text;not null"`
 	RefreshToken string    `gorm:"type:text;not null"`
 	TokenExpiry  time.Time `gorm:"not null"`
-	// Horarios de trabajo
-	WorkStartTime string    `gorm:"type:varchar(5);not null"`  // Hora de inicio (HH:mm)
-	WorkEndTime   string    `gorm:"type:varchar(5);not null"`  // Hora de fin (HH:mm)
-	DaysOpen      string    `gorm:"type:varchar(60);not null"` // Días abiertos como una lista (ejemplo: "lunes,martes,miercoles,jueves,viernes")
-	CreatedAt     time.Time `gorm:"autoCreateTime"`
-	UpdatedAt     time.Time `gorm:"autoUpdateTime"`
-	DeletedAt     *time.Time
+
+	CreatedAt time.Time `gorm:"autoCreateTime"`
+	UpdatedAt time.Time `gorm:"autoUpdateTime"`
+	DeletedAt *time.Time
 }

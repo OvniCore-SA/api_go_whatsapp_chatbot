@@ -8,14 +8,18 @@ import (
 )
 
 type Assistant struct {
-	ID                       int64    `gorm:"primaryKey;autoIncrement"`
-	BussinessID              int64    `gorm:"not null"`
-	Bussiness                Bussines `gorm:"foreignKey:BussinessID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
-	Name                     string   `gorm:"not null"`
-	OpenaiAssistantsID       string
-	Description              string
-	Model                    string
-	Instructions             string
+	ID                 int64    `gorm:"primaryKey;autoIncrement"`
+	BussinessID        int64    `gorm:"not null"`
+	Bussiness          Bussines `gorm:"foreignKey:BussinessID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	Name               string   `gorm:"not null"`
+	OpenaiAssistantsID string
+	Description        string
+	Model              string
+	Instructions       string
+	// Horarios de trabajo
+	WorkStartTime            string                   `gorm:"type:varchar(5);not null"`  // Hora de inicio (HH:mm)
+	WorkEndTime              string                   `gorm:"type:varchar(5);not null"`  // Hora de fin (HH:mm)
+	DaysOpen                 string                   `gorm:"type:varchar(60);not null"` // Días abiertos como una lista (ejemplo: "lunes,martes,miercoles,jueves,viernes")
 	Active                   bool                     `gorm:"not null;default:true"`
 	AccountGoogle            bool                     `gorm:"default:false"`
 	NumberPhones             []NumberPhone            `gorm:"foreignKey:AssistantsID"`
