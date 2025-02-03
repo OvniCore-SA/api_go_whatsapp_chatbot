@@ -40,9 +40,10 @@ type WhatsappService struct {
 	configurationService   *ConfigurationsService
 	googleCalendarService  *GoogleCalendarService
 	oauthConfig            *oauth2.Config
+	eventsService          EventsService
 }
 
-func NewWhatsappService(usersService *UsersService, logsService *LogsService, openAIAssistantService *OpenAIAssistantService, utilService *UtilService, numberPhone *NumberPhonesService, messagesRepository *mysql_client.MessagesRepository, assistantService *AssistantService, configurationService *ConfigurationsService, googleCalendarService *GoogleCalendarService, oauthConfig *oauth2.Config) *WhatsappService {
+func NewWhatsappService(usersService *UsersService, logsService *LogsService, openAIAssistantService *OpenAIAssistantService, utilService *UtilService, numberPhone *NumberPhonesService, messagesRepository *mysql_client.MessagesRepository, assistantService *AssistantService, configurationService *ConfigurationsService, googleCalendarService *GoogleCalendarService, oauthConfig *oauth2.Config, eventsService EventsService) *WhatsappService {
 	return &WhatsappService{
 		usersService:           usersService,
 		logsService:            logsService,
@@ -55,6 +56,7 @@ func NewWhatsappService(usersService *UsersService, logsService *LogsService, op
 		configurationService:   configurationService,
 		googleCalendarService:  googleCalendarService,
 		oauthConfig:            oauthConfig,
+		eventsService:          eventsService,
 	}
 }
 
@@ -237,14 +239,15 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 		return nil
 	}
 
+	// start_date y end_date de Google Calendar
+	startDateStr := assistantResp.UserData.StartDate
+	endDateStr := assistantResp.UserData.EndDate
+
 	// 3. Lógica según assistantResp.Function
 	switch assistantResp.Function {
+
 	case "getEvents":
-		// Solo ejecutamos si assistant.AccountGoogle == true (si no, ignoramos)
 		if assistant.AccountGoogle {
-			// start_date y end_date de Google Calendar
-			startDateStr := assistantResp.UserData.StartDate
-			endDateStr := assistantResp.UserData.EndDate
 
 			// Convertir strings a time.Time
 			startDate, err := time.Parse(time.RFC3339, startDateStr)
@@ -255,6 +258,13 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 			if err != nil {
 				return fmt.Errorf("error parsing end_date: %v", err)
 			}
+
+			eventsDB, err := service.eventsService.GetAll()
+			if err != nil {
+				return fmt.Errorf("error parsing end_date: %v", err)
+			}
+
+			fmt.Println(eventsDB)
 
 			// Obtener token Google
 			token, err := service.googleCalendarService.GetOrRefreshToken(
@@ -286,8 +296,6 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 	case "insertEvents":
 		// Solo ejecutamos si assistant.AccountGoogle == true
 		if assistant.AccountGoogle {
-			startDateStr := assistantResp.UserData.StartDate
-			endDateStr := assistantResp.UserData.EndDate
 
 			token, err := service.googleCalendarService.GetOrRefreshToken(
 				int(assistant.ID),
@@ -310,9 +318,26 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 				return err
 			}
 
-			_, err = service.googleCalendarService.CreateGoogleCalendarEvent(token, context.Background(), event)
+			event, err = service.googleCalendarService.CreateGoogleCalendarEvent(token, context.Background(), event)
 			if err != nil {
 				return err
+			}
+
+			eventDTO := dtos.EventsDto{
+				Summary:               assistantResp.UserData.Nombre,
+				Description:           "Contacto: " + assistantResp.UserData.Email + "\n Tel: " + assistantResp.UserData.Phone,
+				StartDate:             startDateStr,
+				EndDate:               endDateStr,
+				AssistantsID:          assistant.ID,
+				ContactsID:            contact.ID,
+				EventGoogleCalendarID: event.Id,
+			}
+
+			// Creo el evento en la base de datos
+			err = service.eventsService.Create(eventDTO)
+			if err != nil {
+				log.Printf("\nCreate(eventDTO): %s", err.Error())
+				return fmt.Errorf("error creating event: %v", err)
 			}
 
 			// Parsear las fechas en el formato esperado
@@ -341,6 +366,62 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 		} else {
 			// Si no hay cuenta Google, devolvemos un mensaje por defecto
 			responseUser = "Lo siento, no tengo acceso a Google Calendar."
+		}
+
+	case "updateEvent":
+		if assistant.AccountGoogle {
+			// start_date y end_date de Google Calendar
+			startDateStr := assistantResp.UserData.StartDate
+			endDateStr := assistantResp.UserData.EndDate
+
+			token, err := service.googleCalendarService.GetOrRefreshToken(int(assistant.ID), service.oauthConfig, context.Background())
+			if err != nil {
+				return err
+			}
+
+			event, err := googlecalendar.UploadEventRequestEditCalendar(
+				assistantResp.UserData.Nombre,
+				"Contacto: "+assistantResp.UserData.Email+"\n Tel: "+assistantResp.UserData.Phone,
+				startDateStr,
+				endDateStr,
+			)
+			if err != nil {
+				return err
+			}
+
+			updatedEvent, err := service.googleCalendarService.UpdateGoogleCalendarEvent(token, context.Background(), "asdfasdf", event)
+			if err != nil {
+				return err
+			}
+			fmt.Print(updatedEvent)
+
+		}
+		eventDTO := dtos.EventsDto{
+			ID:           0,
+			Summary:      assistantResp.UserData.Nombre,
+			Description:  "Contacto: " + assistantResp.UserData.Email + "\n Tel: " + assistantResp.UserData.Phone,
+			StartDate:    startDateStr,
+			EndDate:      endDateStr,
+			AssistantsID: assistant.ID,
+			ContactsID:   contact.ID,
+		}
+		err = service.eventsService.Update(eventDTO)
+		if err != nil {
+			return err
+		}
+
+	case "deleteEvent":
+		if assistant.AccountGoogle {
+			token, err := service.googleCalendarService.GetOrRefreshToken(int(assistant.ID), service.oauthConfig, context.Background())
+			if err != nil {
+				return err
+			}
+			err = service.googleCalendarService.DeleteGoogleCalendarEvent(token, context.Background(), "")
+			if err != nil {
+				return err
+			}
+
+			responseUser = "✅ Su turno ha sido eliminado con éxito. Si nesesitas cualquier otra cosa, estoy acá para ayudarte 😊"
 		}
 
 	case "responseText":

@@ -12,6 +12,7 @@ type EventRequest struct {
 	Description string `json:"description"`
 	Start       string `json:"start"` // Fecha y hora en formato RFC3339
 	End         string `json:"end"`   // Fecha y hora en formato RFC3339
+	ContactsID  uint   `json:"contacts_id"`
 }
 
 // Validate verifica que el evento tenga valores válidos
@@ -31,6 +32,10 @@ func (e *EventRequest) Validate() error {
 
 	e.Start = startTime.Format("2006-01-02T15:04:05")
 	e.End = endTime.Format("2006-01-02T15:04:05")
+
+	if e.ContactsID <= 0 {
+		return errors.New("el campo 'contacts_id' no puede estar vacío")
+	}
 
 	return nil
 }
@@ -97,5 +102,24 @@ func UploadEventRequestCalendar(summary, description, startDate, endDate string)
 			DateTime: endDate,
 			TimeZone: "UTC-3",
 		},
+	}, nil
+}
+
+// Carga un request para enviar a la creacion de un evento en calendar.
+func UploadEventRequestEditCalendar(summary, description, startDate, endDate string) (eventChatbotRequest *EventRequest, err error) {
+
+	startDateTime, endDateTime, err := ValidateDateEventGoogleCalendar(startDate, endDate)
+	if err != nil {
+		return
+	}
+
+	startDate = startDateTime.Format("2006-01-02T15:04:05")
+	endDate = endDateTime.Format("2006-01-02T15:04:05")
+
+	return &EventRequest{
+		Summary:     summary,
+		Description: description,
+		Start:       startDate,
+		End:         endDate,
 	}, nil
 }

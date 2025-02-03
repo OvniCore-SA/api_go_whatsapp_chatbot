@@ -2,7 +2,7 @@ package entities
 
 import "time"
 
-type GoogleCalendarConfig struct {
+type GoogleCalendarCredential struct {
 	ID           int       `gorm:"primaryKey"`
 	AssistantsID int       `gorm:"not null"`
 	GoogleUserID string    `gorm:"not null"`

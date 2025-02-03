@@ -53,12 +53,18 @@ func Setup(app *fiber.App,
 	app.Get("/auth/url", middleware.ValidarApikey(), controllers.GetAuthURL(OauthConfig))
 	app.Get("/auth/callback-auth", controllers.GetAuthToken(OauthConfig, GoogleCalendarService))
 
-	// Endpoint para obtener eventos del calendario
+	// GOOGLE CALENDAR
 	api.Get("/calendar/events", middleware.ValidarApikey(), controllers.GetCalendarEventsByDate(GoogleCalendarService, OauthConfig))
 	api.Post("/calendar/events", middleware.ValidarApikey(), controllers.AddCalendarEvent(GoogleCalendarService, OauthConfig))
-
 	api.Put("/calendar/events/:event_id", middleware.ValidarApikey(), controllers.UpdateCalendarEvent(GoogleCalendarService, OauthConfig))
 	api.Delete("/calendar/events/:event_id", middleware.ValidarApikey(), controllers.DeleteCalendarEvent(GoogleCalendarService, OauthConfig))
+
+	// Events (BOT-CORE)
+	api.Get("/events", middleware.ValidarApikey(), UsersController.GetAll)
+	api.Get("/events/:id", middleware.ValidarApikey(), UsersController.GetById)
+	api.Post("/events", middleware.ValidarApikey(), UsersController.Create)
+	api.Put("/events/:id", middleware.ValidarApikey(), UsersController.Update)
+	api.Delete("/events/:id", middleware.ValidarApikey(), UsersController.Delete)
 
 	api.Get("/users", middleware.ValidarApikey(), UsersController.GetAll)
 	api.Get("/users/:id", middleware.ValidarApikey(), UsersController.GetById)

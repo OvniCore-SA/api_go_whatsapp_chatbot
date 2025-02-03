@@ -3,7 +3,6 @@ package dtos
 import (
 	"errors"
 	"strings"
-	"time"
 )
 
 type AssistantDto struct {
@@ -17,10 +16,9 @@ type AssistantDto struct {
 	Active               bool                     `json:"active"`
 	AccountGoogle        bool                     `json:"account_google"`
 	Bussiness            BussinessDto             `json:"bussiness,omitempty"`
-	NumberPhones         []NumberPhoneDto         `json:"number_phones,omitempty"`              // DTO de NumberPhone para la relación de uno a muchos
-	GoogleCalendarConfig *GoogleCalendarConfigDto `json:"google_calendar_credential,omitempty"` // Relación con Google Calendar
-	CreatedAt            time.Time                `json:"created_at"`
-	UpdatedAt            time.Time                `json:"updated_at"`
+	NumberPhones         []NumberPhoneDto         `json:"number_phones,omitempty"`
+	GoogleCalendarConfig *GoogleCalendarConfigDto `json:"google_calendar_credential,omitempty"`
+	Events               []EventsDto              `json:"events,omitempty"`
 }
 
 func (dto *AssistantDto) ValidateAssistantDto(isCreate bool) error {

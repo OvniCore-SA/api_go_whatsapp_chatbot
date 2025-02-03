@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos"
 	googlecalendar "github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos/googleCalendar"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/services"
 	"github.com/gofiber/fiber/v2"
@@ -80,26 +81,62 @@ func AddCalendarEvent(service *services.GoogleCalendarService, config *oauth2.Co
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 		}
 
-		token, err := service.GetOrRefreshToken(assistantID, config, c.Context())
+		// Configurar el asistente
+		assistantWihtGoogleConfig, err := service.AssistantService.FindAssistantById(int64(assistantID))
 		if err != nil {
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": err.Error()})
+			return fmt.Errorf("assistant not found: %v", err)
 		}
 
-		// Crear el evento
-		event := &calendar.Event{
-			Summary:     eventRequest.Summary,
-			Description: eventRequest.Description,
-			Start: &calendar.EventDateTime{
-				DateTime: eventRequest.Start,
-				TimeZone: "UTC-3",
-			},
-			End: &calendar.EventDateTime{
-				DateTime: eventRequest.End,
-				TimeZone: "UTC-3",
-			},
+		var createdEvent *calendar.Event
+
+		if assistantWihtGoogleConfig.AccountGoogle {
+			token, err := service.GetOrRefreshToken(assistantID, config, c.Context())
+			if err != nil {
+				return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": err.Error()})
+			}
+
+			// Crear el evento
+			event := &calendar.Event{
+				Summary:     eventRequest.Summary,
+				Description: eventRequest.Description,
+				Start: &calendar.EventDateTime{
+					DateTime: eventRequest.Start,
+					TimeZone: "UTC-3",
+				},
+				End: &calendar.EventDateTime{
+					DateTime: eventRequest.End,
+					TimeZone: "UTC-3",
+				},
+			}
+
+			createdEvent, err = service.CreateGoogleCalendarEvent(token, c.Context(), event)
+			if err != nil {
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+			}
+		} else {
+			// cargo el dto para la creacion solo en nuestra db
+			createdEvent = &calendar.Event{
+				Summary:     eventRequest.Summary,
+				Description: eventRequest.Description,
+				Start: &calendar.EventDateTime{
+					DateTime: eventRequest.Start,
+					TimeZone: "UTC-3",
+				},
+				End: &calendar.EventDateTime{
+					DateTime: eventRequest.End,
+					TimeZone: "UTC-3",
+				},
+			}
 		}
 
-		createdEvent, err := service.CreateGoogleCalendarEvent(token, c.Context(), event)
+		eventDto, err := dtos.MapCalendarEventToEventsDto(createdEvent)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+		}
+		eventDto.ContactsID = eventDto.ContactsID
+
+		// Guardar en la base de datos usando EventsService
+		err = service.EventsService.Create(eventDto)
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 		}

@@ -9,14 +9,15 @@ import (
 
 type Contact struct {
 	ID                int64       `gorm:"primaryKey;autoIncrement"`
-	NumberPhonesID    int64       `gorm:"not null"`                                                                // Clave foránea hacia NumberPhone
-	NumberPhoneEntity NumberPhone `gorm:"foreignKey:NumberPhonesID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"` // Relación con NumberPhone
-	NumberPhone       int64       `gorm:"not null"`                                                                // Número de teléfono del contacto
+	NumberPhonesID    int64       `gorm:"not null"`
+	NumberPhoneEntity NumberPhone `gorm:"foreignKey:NumberPhonesID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	NumberPhone       int64       `gorm:"not null"`
 	OpenaiThreadsID   string
 	CountTokens       string
+	Events            []Events `gorm:"foreignKey:ContactsID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"` // Relación con Events
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
-	DeletedAt         gorm.DeletedAt `gorm:"index"` // Soft delete
+	DeletedAt         gorm.DeletedAt `gorm:"index"`
 }
 
 func MapEntityToContactDto(entity Contact) dtos.ContactDto {

@@ -18,17 +18,21 @@ import (
 )
 
 type GoogleCalendarService struct {
-	repository *mysql_client.GoogleCalendarConfigsRepository
+	repository       *mysql_client.GoogleCalendarCredentialsRepository
+	AssistantService AssistantService
+	EventsService    EventsService
 }
 
-func NewGoogleCalendarService(repository *mysql_client.GoogleCalendarConfigsRepository) *GoogleCalendarService {
+func NewGoogleCalendarService(repository *mysql_client.GoogleCalendarCredentialsRepository, assistantService AssistantService, eventsService EventsService) *GoogleCalendarService {
 	return &GoogleCalendarService{
-		repository: repository,
+		repository:       repository,
+		AssistantService: assistantService,
+		EventsService:    eventsService,
 	}
 }
 
 // GetCredentials obtiene las credenciales de un asistente
-func (s *GoogleCalendarService) GetCredentials(assistantID int) (*entities.GoogleCalendarConfig, error) {
+func (s *GoogleCalendarService) GetCredentials(assistantID int) (*entities.GoogleCalendarCredential, error) {
 	return s.repository.FindByAssistantID(assistantID)
 }
 
@@ -50,7 +54,7 @@ func (s *GoogleCalendarService) SaveCredentials(assistantID int, token *oauth2.T
 	}
 
 	// Crear nuevas credenciales
-	newCredential := &entities.GoogleCalendarConfig{
+	newCredential := &entities.GoogleCalendarCredential{
 		AssistantsID: assistantID,
 		GoogleUserID: googleUserID,
 		AccessToken:  token.AccessToken,
