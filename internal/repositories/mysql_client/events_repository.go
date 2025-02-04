@@ -1,6 +1,9 @@
 package mysql_client
 
 import (
+	"fmt"
+	"time"
+
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities"
 	"gorm.io/gorm"
 )
@@ -12,6 +15,8 @@ type EventsRepository interface {
 	FindAll() ([]entities.Events, error)
 	Update(event *entities.Events) error
 	Delete(id int) error
+
+	FindByContactAndDateAndTime(contactID int64, date string, currentTime string) ([]entities.Events, error)
 }
 
 // Implementación del repositorio
@@ -21,6 +26,50 @@ type eventsRepositoryImpl struct {
 
 func NewEventsRepository(db *gorm.DB) EventsRepository {
 	return &eventsRepositoryImpl{db: db}
+}
+
+func (r *eventsRepositoryImpl) FindByContactAndDateAndTime(contactID int64, date string, currentTime string) ([]entities.Events, error) {
+	var events []entities.Events
+
+	// La función espera:
+	// - 'date' en formato "YYYY-MM-DD" (solo la parte de la fecha) para comparar con DATE(start_date).
+	// - 'currentTime' en formato "YYYY-MM-DD HH:MM:SS", que se usará para filtrar los eventos a partir de esa hora.
+	// Sin embargo, currentTime puede venir en distintos formatos. Por ello, se intenta parsearlo usando varios formatos:
+	formats := []string{
+		time.RFC3339,          // Ejemplo: "2006-01-02T15:04:05Z07:00"
+		"2006-01-02 15:04:05", // Ejemplo: "2025-02-03 22:43:00"
+		"2006-01-02",          // Ejemplo: "2025-02-03"
+	}
+
+	var ct time.Time
+	var err error
+	parsed := false
+	for _, format := range formats {
+		ct, err = time.Parse(format, currentTime)
+		if err == nil {
+			parsed = true
+			break
+		}
+	}
+	if !parsed {
+		return nil, fmt.Errorf("error parsing currentTime: %v", err)
+	}
+
+	// Convertir la hora parseada al formato DATETIME deseado: "YYYY-MM-DD HH:MM:SS"
+	formattedCurrentTime := ct.Format("2006-01-02 15:04:05")
+
+	// Realizar la consulta: se buscan los eventos donde:
+	// - contacts_id coincide con el parámetro contactID.
+	// - La fecha de start_date (sin la hora) coincide con 'date' (formato "YYYY-MM-DD").
+	// - start_date es mayor o igual que formattedCurrentTime.
+	err = r.db.
+		Where("contacts_id = ? AND DATE(start_date) = ? AND start_date >= ?", contactID, date, formattedCurrentTime).
+		Order("start_date ASC").
+		Find(&events).Error
+	if err != nil {
+		return nil, err
+	}
+	return events, nil
 }
 
 func (r *eventsRepositoryImpl) Create(event *entities.Events) error {

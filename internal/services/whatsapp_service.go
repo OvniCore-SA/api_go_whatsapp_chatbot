@@ -250,44 +250,77 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 		if assistant.AccountGoogle {
 
 			// Convertir strings a time.Time
-			startDate, err := time.Parse(time.RFC3339, startDateStr)
-			if err != nil {
-				return fmt.Errorf("error parsing start_date: %v", err)
-			}
-			endDate, err := time.Parse(time.RFC3339, endDateStr)
+			// startDate, err := time.Parse("2006-01-02T15:04:05", startDateStr)
+			// if err != nil {
+			// 	return fmt.Errorf("error parsing start_date: %v", err)
+			// }
+			formattedTime := currentTime.Format("2006-01-02 15:04:05")
+			// endDate, err := time.Parse("2006-01-02T15:04:05", endDateStr)
+			// if err != nil {
+			// 	return fmt.Errorf("error parsing end_date: %v", err)
+			// }
+
+			eventsDB, err := service.eventsService.GetEventByContactAndDate(contact.ID, startDateStr, formattedTime)
 			if err != nil {
 				return fmt.Errorf("error parsing end_date: %v", err)
 			}
 
-			eventsDB, err := service.eventsService.GetAll()
-			if err != nil {
-				return fmt.Errorf("error parsing end_date: %v", err)
-			}
+			// // Obtener token Google
+			// token, err := service.googleCalendarService.GetOrRefreshToken(
+			// 	int(assistant.ID),
+			// 	service.oauthConfig,
+			// 	context.Background(),
+			// )
+			// if err != nil {
+			// 	return err
+			// }
 
-			fmt.Println(eventsDB)
-
-			// Obtener token Google
-			token, err := service.googleCalendarService.GetOrRefreshToken(
-				int(assistant.ID),
-				service.oauthConfig,
-				context.Background(),
-			)
-			if err != nil {
-				return err
-			}
-
-			// Buscar eventos en el rango
-			events, err := service.googleCalendarService.
-				FetchGoogleCalendarEventsByDate(token, context.Background(), startDate, endDate)
-			if err != nil {
-				return err
-			}
+			// // Buscar eventos en el rango
+			// events, err := service.googleCalendarService.
+			// 	FetchGoogleCalendarEventsByDate(token, context.Background(), startDate, endDate)
+			// if err != nil {
+			// 	return err
+			// }
 
 			// Aquí puedes formatear la respuesta como quieras (por ejemplo, un string con los eventos)
 			// Ejemplo: responseUser = "Los eventos encontrados son: ..."
 			// En este ejemplo, simplemente los imprimimos.
-			fmt.Println(events)
-			responseUser = fmt.Sprintf("Eventos entre %s y %s: %v", startDateStr, endDateStr, events)
+			parsedStart, err := time.Parse("2006-01-02T15:04:05", startDateStr)
+			if err != nil {
+				parsedStart = time.Now() // fallback en caso de error
+			}
+
+			formattedStartStr := parsedStart.Format("02-01-2006")
+
+			// Formatear la cabecera con un mensaje claro y visualmente atractivo
+			responseUser = fmt.Sprintf("📅 *Tus eventos programados para el %s*:\n\n", formattedStartStr)
+
+			for i, event := range eventsDB {
+				// Intentar parsear las fechas (se asume formato RFC3339)
+				startTime, err := time.Parse(time.RFC3339, event.StartDate)
+				if err != nil {
+					startTime = time.Now() // fallback en caso de error
+				}
+				endTime, err := time.Parse(time.RFC3339, event.EndDate)
+				if err != nil {
+					endTime = time.Now() // fallback en caso de error
+				}
+				// Formatear las fechas en un formato más amigable (solo hora)
+				formattedStart := startTime.Format("15:04")
+				formattedEnd := endTime.Format("15:04")
+
+				// Agregar los detalles del evento con un formato más ordenado y emojis para claridad
+				responseUser += fmt.Sprintf(
+					"%s\n🔹 *Título:* %s\n🕒 *Inicio:* %s\n⏰ *Fin:* %s\n────────────────────────\n",
+					service.utilService.GetNumberEmoji(i+1),
+					event.Summary,
+					formattedStart,
+					formattedEnd,
+				)
+			}
+
+			fmt.Println(responseUser)
+
 		} else {
 			// Si no hay cuenta Google, devolvemos un mensaje por defecto
 			responseUser = "Lo siento, no tengo acceso a Google Calendar."
@@ -368,43 +401,64 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 			responseUser = "Lo siento, no tengo acceso a Google Calendar."
 		}
 
-	case "updateEvent":
-		if assistant.AccountGoogle {
-			// start_date y end_date de Google Calendar
-			startDateStr := assistantResp.UserData.StartDate
-			endDateStr := assistantResp.UserData.EndDate
+	case "updateEvents":
+		// Convertir la fecha actual al formato adecuado (se asume RFC3339)
+		currentTimeStr := time.Now().Format(time.RFC3339)
 
+		// Se obtiene el evento del contacto para la fecha indicada y con hora >= a la actual
+		eventFound, err := service.eventsService.GetEventByContactAndDate(contact.ID, assistantResp.UserData.StartDate, currentTimeStr)
+		if err != nil {
+			responseUser = "Lo siento, no tengo pero no pudimos encontrar el turno que mencionas. Te puedes ayudar viendo los turnos que tenes en la fecha que quieres consultar. 😊"
+			break
+		}
+		if eventFound == nil || len(eventFound) <= 0 {
+			return fmt.Errorf("no se encontró un evento para el contacto %d en la fecha %s con hora mayor o igual a %s", contact.ID, assistantResp.UserData.StartDate, currentTimeStr)
+		}
+
+		// Obtener el ID del evento de Google Calendar desde la BD
+		googleCalendarEventID := eventFound[0].EventGoogleCalendarID
+		if googleCalendarEventID == "" {
+			return fmt.Errorf("el evento no tiene un ID de Google Calendar registrado")
+		}
+
+		// Si el asistente tiene cuenta Google, actualizar el evento en Google Calendar
+		if assistant.AccountGoogle {
 			token, err := service.googleCalendarService.GetOrRefreshToken(int(assistant.ID), service.oauthConfig, context.Background())
 			if err != nil {
 				return err
 			}
 
-			event, err := googlecalendar.UploadEventRequestEditCalendar(
+			// Preparar el evento actualizado para Google Calendar
+			googleEvent, err := googlecalendar.UploadEventRequestEditCalendar(
 				assistantResp.UserData.Nombre,
 				"Contacto: "+assistantResp.UserData.Email+"\n Tel: "+assistantResp.UserData.Phone,
-				startDateStr,
-				endDateStr,
+				assistantResp.UserData.StartDate,
+				assistantResp.UserData.EndDate,
 			)
 			if err != nil {
 				return err
 			}
 
-			updatedEvent, err := service.googleCalendarService.UpdateGoogleCalendarEvent(token, context.Background(), "asdfasdf", event)
+			// Actualizar el evento en Google Calendar usando el ID obtenido desde la BD
+			updatedEvent, err := service.googleCalendarService.UpdateGoogleCalendarEvent(token, context.Background(), googleCalendarEventID, googleEvent)
 			if err != nil {
 				return err
 			}
 			fmt.Print(updatedEvent)
+		}
 
-		}
+		// Actualizar el evento en la base de datos con la información nueva
 		eventDTO := dtos.EventsDto{
-			ID:           0,
-			Summary:      assistantResp.UserData.Nombre,
-			Description:  "Contacto: " + assistantResp.UserData.Email + "\n Tel: " + assistantResp.UserData.Phone,
-			StartDate:    startDateStr,
-			EndDate:      endDateStr,
-			AssistantsID: assistant.ID,
-			ContactsID:   contact.ID,
+			ID:                    eventFound[0].ID,
+			Summary:               assistantResp.UserData.Nombre,
+			Description:           "Contacto: " + assistantResp.UserData.Email + "\n Tel: " + assistantResp.UserData.Phone,
+			StartDate:             assistantResp.UserData.StartDate,
+			EndDate:               assistantResp.UserData.EndDate,
+			EventGoogleCalendarID: googleCalendarEventID,
+			AssistantsID:          assistant.ID,
+			ContactsID:            contact.ID,
 		}
+
 		err = service.eventsService.Update(eventDTO)
 		if err != nil {
 			return err
@@ -424,14 +478,11 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 			responseUser = "✅ Su turno ha sido eliminado con éxito. Si nesesitas cualquier otra cosa, estoy acá para ayudarte 😊"
 		}
 
-	case "responseText":
+	default:
 		// Respuesta normal (sin Calendar)
 		// El texto a mostrar al usuario viene en assistantResp.Message
 		responseUser = assistantResp.Message
 
-	default:
-		// Acción desconocida
-		return fmt.Errorf("unknown action in response: %s", assistantResp.Function)
 	}
 
 	// 4. Guardar la respuesta que le daremos al usuario

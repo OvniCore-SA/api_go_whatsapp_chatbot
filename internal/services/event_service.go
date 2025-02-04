@@ -2,6 +2,8 @@ package services
 
 import (
 	"errors"
+	"fmt"
+	"time"
 
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities"
@@ -15,6 +17,8 @@ type EventsService interface {
 	GetAll() ([]dtos.EventsDto, error)
 	Update(eventDTO dtos.EventsDto) error
 	Delete(id int) error
+	// método para buscar un evento por contacto, fecha y hora
+	GetEventByContactAndDate(contactID int64, date, currentTime string) ([]entities.Events, error)
 }
 
 // Implementación del servicio
@@ -24,6 +28,16 @@ type eventsServiceImpl struct {
 
 func NewEventsService(repo mysql_client.EventsRepository) EventsService {
 	return &eventsServiceImpl{repo: repo}
+}
+
+func (s *eventsServiceImpl) GetEventByContactAndDate(contactID int64, date, currentTime string) ([]entities.Events, error) {
+	parsedDate, err := time.Parse("2006-01-02T15:04:05", date)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing date: %v", err)
+	}
+	// Formateamos la fecha al formato DATETIME de MySQL: "2006-01-02 15:04:05"
+	formattedSearchDate := parsedDate.Format("2006-01-02 15:04:05")
+	return s.repo.FindByContactAndDateAndTime(contactID, formattedSearchDate, currentTime)
 }
 
 // Crear un evento desde DTO
