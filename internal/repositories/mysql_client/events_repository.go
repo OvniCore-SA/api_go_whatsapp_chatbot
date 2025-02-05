@@ -15,8 +15,10 @@ type EventsRepository interface {
 	FindAll() ([]entities.Events, error)
 	Update(event *entities.Events) error
 	Delete(id int) error
+	Cancel(codeEvent string) error
 
 	FindByContactAndDateAndTime(contactID int64, date string, currentTime string) ([]entities.Events, error)
+	ExistsByCode(code string) (bool, error)
 }
 
 // Implementación del repositorio
@@ -72,6 +74,15 @@ func (r *eventsRepositoryImpl) FindByContactAndDateAndTime(contactID int64, date
 	return events, nil
 }
 
+func (r *eventsRepositoryImpl) ExistsByCode(code string) (bool, error) {
+	var count int64
+	err := r.db.Model(&entities.Events{}).Where("code_event = ?", code).Count(&count).Error
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
 func (r *eventsRepositoryImpl) Create(event *entities.Events) error {
 	return r.db.Create(event).Error
 }
@@ -94,4 +105,19 @@ func (r *eventsRepositoryImpl) Update(event *entities.Events) error {
 
 func (r *eventsRepositoryImpl) Delete(id int) error {
 	return r.db.Delete(&entities.Events{}, id).Error
+}
+
+func (r *eventsRepositoryImpl) Cancel(codeEvent string) error {
+	var event entities.Events
+	// Primero obtenemos el primer registro que coincida con el código
+	err := r.db.Where("code_event = ?", codeEvent).First(&event).Error
+	if err != nil {
+		return fmt.Errorf("no se pudo eliminar el evento con el código '%s': %v", codeEvent, err)
+	}
+	// Luego eliminamos el registro encontrado
+	err = r.db.Delete(&event).Error
+	if err != nil {
+		return fmt.Errorf("error cancelando evento: %v", err)
+	}
+	return nil
 }

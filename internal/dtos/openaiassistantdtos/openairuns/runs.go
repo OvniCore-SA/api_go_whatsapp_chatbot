@@ -78,7 +78,6 @@ type GetRunResponse struct {
 		Type         string `json:"type"`
 		LastMessages *int   `json:"last_messages"`
 	} `json:"truncation_strategy"`
-	ResponseFormat    string `json:"response_format"`
 	ToolChoice        string `json:"tool_choice"`
 	ParallelToolCalls bool   `json:"parallel_tool_calls"`
 }

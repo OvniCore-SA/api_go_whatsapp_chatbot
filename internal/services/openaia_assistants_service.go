@@ -5,10 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"mime/multipart"
 	"net/http"
 	"os"
+	"strings"
 	"time"
+
+	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos/openaiassistantdtos/openairuns"
 )
 
 type OpenAIAssistantService struct {
@@ -41,7 +45,7 @@ func (s *OpenAIAssistantService) doRequest(req *http.Request) (*http.Response, e
 	}
 
 	if resp.StatusCode >= 400 {
-		return nil, fmt.Errorf("API request failed with status %d", resp.StatusCode)
+		return resp, fmt.Errorf("API request failed with status %d", resp.StatusCode)
 	}
 
 	return resp, nil
@@ -347,6 +351,11 @@ func (s *OpenAIAssistantService) SendMessageToThread(threadID, message string, u
 
 	resp, err := s.doRequest(req)
 	if err != nil {
+		if resp != nil {
+			defer resp.Body.Close()
+			responseBody, _ := io.ReadAll(resp.Body)
+			fmt.Printf("failed to send messages to thread, status code: %d, response: %s", resp.StatusCode, string(responseBody))
+		}
 		return fmt.Errorf("error sending request to OpenAI: %v", err)
 	}
 	defer resp.Body.Close()
@@ -399,6 +408,122 @@ func (s *OpenAIAssistantService) CreateRunForThreadWithConversation(threadID, as
 	return result.ID, nil
 }
 
+func (s *OpenAIAssistantService) ListRunsForThread(threadID string, limit int, order, after, before string) ([]openairuns.OpenAIRunResponse, error) {
+	var urlBuilder strings.Builder
+	fmt.Fprintf(&urlBuilder, os.Getenv("OPENAI_API_URL")+"/threads/%s/runs?limit=%d", threadID, limit)
+	if order != "" {
+		fmt.Fprintf(&urlBuilder, "&order=%s", order)
+	}
+	if after != "" {
+		fmt.Fprintf(&urlBuilder, "&after=%s", after)
+	}
+	if before != "" {
+		fmt.Fprintf(&urlBuilder, "&before=%s", before)
+	}
+
+	req, err := http.NewRequest("GET", urlBuilder.String(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request: %v", err)
+	}
+	resp, err := s.doRequest(req)
+	if err != nil {
+		return nil, fmt.Errorf("error sending request to OpenAI: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to get runs, status code: %d", resp.StatusCode)
+	}
+
+	var runsResponse struct {
+		Data []openairuns.OpenAIRunResponse `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&runsResponse); err != nil {
+		return nil, fmt.Errorf("error decoding response: %v", err)
+	}
+
+	return runsResponse.Data, nil
+}
+
+// consultaEstadoRun verifica el estado del run y responde si es necesario
+func (s *OpenAIAssistantService) ConsultaEstadoRun(threadID, runID, apiKey string) error {
+	url := fmt.Sprintf("%s/threads/%s/runs/%s", os.Getenv("OPENAI_API_URL"), threadID, runID)
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return err
+	}
+
+	resp, err := s.doRequest(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("error en la solicitud: %s", resp.Status)
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	var runResponse openairuns.OpenAIRunResponse
+	if err := json.Unmarshal(body, &runResponse); err != nil {
+		return err
+	}
+
+	fmt.Println("Estado del Run:", runResponse.Status)
+
+	// Si requiere acción, enviar tool_outputs
+	if runResponse.Status == "requires_action" && runResponse.RequiredAction.Type == "submit_tool_outputs" {
+		return s.EnviarToolOutputs(threadID, runID, runResponse.RequiredAction.SubmitToolOutputs.ToolCalls)
+	}
+
+	return nil
+}
+
+// enviarToolOutputs envía los tool_outputs a OpenAI cuando el run lo requiere
+func (s *OpenAIAssistantService) EnviarToolOutputs(threadID, runID string, toolCalls []openairuns.ToolCall) error {
+	url := fmt.Sprintf("%s/threads/%s/runs/%s/submit_tool_outputs", os.Getenv("OPENAI_API_URL"), threadID, runID)
+
+	// Simulación de respuestas para los tools (personaliza según tu lógica)
+	var toolOutputs []openairuns.OpenAIToolOutput
+	for _, toolCall := range toolCalls {
+		toolOutputs = append(toolOutputs, openairuns.OpenAIToolOutput{
+			ToolCallID: toolCall.ID,
+			Output:     "Respuesta generada automáticamente.", // Ajusta según el contexto
+		})
+	}
+
+	requestBody, err := json.Marshal(map[string]interface{}{
+		"tool_outputs": toolOutputs,
+	})
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(requestBody))
+	if err != nil {
+		return err
+	}
+
+	resp, err := s.doRequest(req)
+	if err != nil {
+		return fmt.Errorf("error sending request to OpenAI: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := ioutil.ReadAll(resp.Body)
+		return fmt.Errorf("error al enviar tool_outputs: %s - %s", resp.Status, string(body))
+	}
+
+	fmt.Println("Tool outputs enviados correctamente.")
+	return nil
+}
+
 func (s *OpenAIAssistantService) WaitForRunCompletion(threadID, runID string, maxRetries int, retryInterval time.Duration) error {
 	for i := 0; i < maxRetries; i++ {
 		// Crear la solicitud HTTP para consultar el estado del run
@@ -409,16 +534,23 @@ func (s *OpenAIAssistantService) WaitForRunCompletion(threadID, runID string, ma
 
 		// Enviar la solicitud y procesar la respuesta
 		resp, err := s.doRequest(req)
+		if resp.StatusCode == 500 && i < maxRetries {
+			time.Sleep(retryInterval)
+			resp, err = s.doRequest(req)
+		}
 		if err != nil {
 			return fmt.Errorf("error sending request to OpenAI: %v", err)
 		}
 		defer resp.Body.Close()
 
-		// Decodificar la respuesta
-		var result struct {
-			Status string `json:"status"`
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("error reading response body: %v", err)
 		}
-		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+
+		// Ahora decodificar la respuesta en la estructura
+		var result openairuns.OpenAIRunResponse
+		if err := json.Unmarshal(body, &result); err != nil {
 			return fmt.Errorf("error decoding response: %v", err)
 		}
 
@@ -433,6 +565,14 @@ func (s *OpenAIAssistantService) WaitForRunCompletion(threadID, runID string, ma
 		case "failed", "cancelled", "expired":
 			// Si el run falla o es cancelado, retornar error
 			return fmt.Errorf("run ended with status: %s", result.Status)
+		case "requires_action":
+			// Si requiere acción, enviar tool_outputs
+			err := s.EnviarToolOutputs(threadID, runID, result.RequiredAction.SubmitToolOutputs.ToolCalls)
+			if err != nil {
+				return err
+			}
+			i = 0
+			continue
 		default:
 			// Si está en progreso o en cola, esperar y reintentar
 			fmt.Printf("Run status: %s, retrying...\n", result.Status)

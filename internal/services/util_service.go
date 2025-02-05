@@ -2,6 +2,8 @@ package services
 
 import (
 	"time"
+
+	"golang.org/x/exp/rand"
 )
 
 type UtilService struct {
@@ -28,7 +30,17 @@ func (utilService *UtilService) GetNumberEmoji(number int) string {
 	return emojis[number]
 }
 
-func isValidDate(date string) bool {
-	_, err := time.Parse("2006-01-02T15:04:05Z", date)
-	return err == nil
+func (utilService *UtilService) GenerateUniqueCode() string {
+	// Caracteres permitidos en el código.
+	chars := "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	var codeLength = 6
+	rand.Seed(uint64(time.Now().UnixNano())) // Establece la semilla del generador aleatorio.
+
+	// Crear un slice de bytes para almacenar los caracteres del código.
+	code := make([]byte, codeLength)
+	for i := range code {
+		code[i] = chars[rand.Intn(len(chars))] // Selecciona un carácter aleatorio de la lista.
+	}
+
+	return string(code) // Convierte el slice de bytes a string y lo retorna.
 }

@@ -105,7 +105,7 @@ func main() {
 	AssistantService := services.NewAssistantService(AssistantRepository, FileService, OpenAIAssistantClient)
 	AssistantController := controllers.NewAssistantController(AssistantService)
 	EventsRepository := mysql_client.NewEventsRepository(db)
-	EventsService := services.NewEventsService(EventsRepository)
+	EventsService := services.NewEventsService(EventsRepository, *UtilService)
 	GoogleCalendarRepository := mysql_client.NewGoogleCalendarConfigsRepository(db)
 	GoogleCalendarService := services.NewGoogleCalendarService(GoogleCalendarRepository, *AssistantService, EventsService)
 	WhatsappService := services.NewWhatsappService(UsersService, LogsService, OpenAIAssistantClient, UtilService, NumberPhonesService, MessageRepository, AssistantService, ConfigurationService, GoogleCalendarService, OauthConfig, EventsService)

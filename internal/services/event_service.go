@@ -8,6 +8,7 @@ import (
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/repositories/mysql_client"
+	"golang.org/x/exp/rand"
 )
 
 // Interfaz de servicio con DTOs
@@ -17,17 +18,48 @@ type EventsService interface {
 	GetAll() ([]dtos.EventsDto, error)
 	Update(eventDTO dtos.EventsDto) error
 	Delete(id int) error
+	Cancel(codeEvent string) error
 	// método para buscar un evento por contacto, fecha y hora
 	GetEventByContactAndDate(contactID int64, date, currentTime string) ([]entities.Events, error)
+	// Verifica si un codigo existe en un evento.
+	IsCodeUnique(code string) (bool, error)
+	// Genera un codigo unico para un nuevo evento.
+	GenerateUniqueCode() (string, error)
 }
 
 // Implementación del servicio
 type eventsServiceImpl struct {
-	repo mysql_client.EventsRepository
+	repo        mysql_client.EventsRepository
+	utilService UtilService
 }
 
-func NewEventsService(repo mysql_client.EventsRepository) EventsService {
-	return &eventsServiceImpl{repo: repo}
+func NewEventsService(repo mysql_client.EventsRepository, utilService UtilService) EventsService {
+	return &eventsServiceImpl{
+		repo:        repo,
+		utilService: utilService,
+	}
+}
+
+// GenerateUniqueCode generates a unique code for event, ensuring it does not exist in the database
+func (s *eventsServiceImpl) GenerateUniqueCode() (string, error) {
+	rand.Seed(uint64(time.Now().UnixNano())) // Seed the random number generator
+	attempts := 0
+	maxAttempts := 10 // Limita el número de intentos para evitar un bucle infinito
+
+	for {
+		if attempts >= maxAttempts {
+			return "", fmt.Errorf("failed to generate a unique code after %d attempts", maxAttempts)
+		}
+		code := s.utilService.GenerateUniqueCode() // Asume que UtilService tiene un método GenerateUniqueCode
+		unique, err := s.repo.ExistsByCode(code)
+		if err != nil {
+			return "", err
+		}
+		if !unique {
+			return code, nil
+		}
+		attempts++
+	}
 }
 
 func (s *eventsServiceImpl) GetEventByContactAndDate(contactID int64, date, currentTime string) ([]entities.Events, error) {
@@ -38,6 +70,14 @@ func (s *eventsServiceImpl) GetEventByContactAndDate(contactID int64, date, curr
 	// Formateamos la fecha al formato DATETIME de MySQL: "2006-01-02 15:04:05"
 	formattedSearchDate := parsedDate.Format("2006-01-02 15:04:05")
 	return s.repo.FindByContactAndDateAndTime(contactID, formattedSearchDate, currentTime)
+}
+
+func (s *eventsServiceImpl) IsCodeUnique(code string) (bool, error) {
+	unique, err := s.repo.ExistsByCode(code)
+	if err != nil {
+		return false, err
+	}
+	return unique, nil
 }
 
 // Crear un evento desde DTO
@@ -88,6 +128,11 @@ func (s *eventsServiceImpl) Update(eventDTO dtos.EventsDto) error {
 	// Convertir DTO a entidad
 	event := entities.MapDtoToEvents(eventDTO)
 	return s.repo.Update(&event)
+}
+
+// Eliminar un evento por ID
+func (s *eventsServiceImpl) Cancel(codeEvent string) error {
+	return s.repo.Cancel(codeEvent)
 }
 
 // Eliminar un evento por ID

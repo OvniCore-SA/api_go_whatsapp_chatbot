@@ -14,6 +14,7 @@ type Events struct {
 	StartDate             string `gorm:"type:text;not null"`
 	EndDate               string `gorm:"type:text;not null"`
 	EventGoogleCalendarID string
+	CodeEvent             string `gorm:"type:text;not null"`
 
 	AssistantsID int64     `gorm:"not null"` // Relación con Assistant (un asistente tiene muchos eventos)
 	Assistant    Assistant `gorm:"foreignKey:AssistantsID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
@@ -36,6 +37,7 @@ func MapEntityToEventsDto(entity Events) dtos.EventsDto {
 		EventGoogleCalendarID: entity.EventGoogleCalendarID,
 		AssistantsID:          entity.AssistantsID,
 		ContactsID:            entity.ContactsID,
+		CodeEvent:             entity.CodeEvent,
 	}
 }
 
@@ -49,5 +51,6 @@ func MapDtoToEvents(dto dtos.EventsDto) Events {
 		EventGoogleCalendarID: dto.EventGoogleCalendarID,
 		AssistantsID:          dto.AssistantsID,
 		ContactsID:            dto.ContactsID,
+		CodeEvent:             dto.CodeEvent,
 	}
 }
