@@ -45,10 +45,14 @@ func MapEntityToEventsDto(entity Events) dtos.EventsDto {
 }
 
 func MapDtoToEvents(dto dtos.EventsDto) Events {
-	createdAtToTime, err := time.Parse("2006-01-02T15:04:05-03:00", dto.CreatedAt)
-	if err != nil {
-		fmt.Println("Error al parsear la fecha:", err)
-		return Events{}
+	var createdAtToTime time.Time
+	if len(dto.CreatedAt) > 0 {
+		var err error
+		createdAtToTime, err = time.Parse("2006-01-02T15:04:05-03:00", dto.CreatedAt)
+		if err != nil {
+			fmt.Println("Error al parsear la fecha:", err)
+			return Events{}
+		}
 	}
 	return Events{
 		ID:                    dto.ID,

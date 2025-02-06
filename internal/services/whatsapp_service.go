@@ -309,6 +309,14 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 			return err
 		}
 
+		startDateStrToDate, err := time.Parse("2006-01-02T15:04:05", assistantResp.UserData.MeetingDate)
+		if err != nil {
+			fmt.Println("Error al parsear la fecha:", err)
+			return err
+		}
+
+		startDateToStr := startDateStrToDate.Format("2006-01-02")
+
 		// Sumar 30 minutos
 		endDate := endDateStrToDate.Add(30 * time.Minute)
 		endDateStr := endDate.Format("2006-01-02T15:04:05")
@@ -316,7 +324,7 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 		eventDTO := dtos.EventsDto{
 			Summary:      assistantResp.UserData.UserName,
 			Description:  "Contacto: " + assistantResp.UserData.UserEmail + "\n Tel: " + strconv.Itoa(int(contact.NumberPhone)),
-			StartDate:    assistantResp.UserData.MeetingDate,
+			StartDate:    startDateToStr,
 			EndDate:      endDateStr,
 			AssistantsID: assistant.ID,
 			ContactsID:   contact.ID,
