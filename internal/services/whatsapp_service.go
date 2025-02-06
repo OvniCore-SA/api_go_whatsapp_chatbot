@@ -294,6 +294,8 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 		}
 
 	case "createMeeting":
+		fmt.Println("\nCreando evento...\n\n")
+		fmt.Println(response)
 		// Solo ejecutamos si assistant.AccountGoogle == true
 		code, err := service.eventsService.GenerateUniqueCode()
 		if err != nil {
