@@ -9,11 +9,9 @@ type AssistantJSONResponse struct {
 		MeetingDate string `json:"meeting_date,omitempty"` // Fecha y hora de la reunión en formato ISO 8601
 
 		// Para "updateEvents"
+		// Para "deleteEvent" y "getMeetingDetails"
 		EventCode string `json:"event_code,omitempty"` // Código del evento a actualizar
 		NewDate   string `json:"new_date,omitempty"`   // Nueva fecha y hora del evento
-
-		// Para "deleteEvent" y "getMeetingDetails"
-		EventID string `json:"event_code,omitempty"` // Código del evento para eliminar o consultar
 
 		// Para "getMeetings"
 		DateToSearch string `json:"date_to_search,omitempty"` // Fecha interpretada automáticamente por el asistente

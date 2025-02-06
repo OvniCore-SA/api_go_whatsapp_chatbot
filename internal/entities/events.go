@@ -1,6 +1,7 @@
 package entities
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos"
@@ -28,6 +29,7 @@ type Events struct {
 }
 
 func MapEntityToEventsDto(entity Events) dtos.EventsDto {
+	createdAtToString := entity.CreatedAt.Format(time.RFC3339)
 	return dtos.EventsDto{
 		ID:                    entity.ID,
 		Summary:               entity.Summary,
@@ -38,10 +40,16 @@ func MapEntityToEventsDto(entity Events) dtos.EventsDto {
 		AssistantsID:          entity.AssistantsID,
 		ContactsID:            entity.ContactsID,
 		CodeEvent:             entity.CodeEvent,
+		CreatedAt:             createdAtToString,
 	}
 }
 
 func MapDtoToEvents(dto dtos.EventsDto) Events {
+	createdAtToTime, err := time.Parse("2006-01-02T15:04:05-03:00", dto.CreatedAt)
+	if err != nil {
+		fmt.Println("Error al parsear la fecha:", err)
+		return Events{}
+	}
 	return Events{
 		ID:                    dto.ID,
 		Summary:               dto.Summary,
@@ -52,5 +60,6 @@ func MapDtoToEvents(dto dtos.EventsDto) Events {
 		AssistantsID:          dto.AssistantsID,
 		ContactsID:            dto.ContactsID,
 		CodeEvent:             dto.CodeEvent,
+		CreatedAt:             createdAtToTime,
 	}
 }

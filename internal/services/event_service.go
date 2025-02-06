@@ -25,6 +25,7 @@ type EventsService interface {
 	IsCodeUnique(code string) (bool, error)
 	// Genera un codigo unico para un nuevo evento.
 	GenerateUniqueCode() (string, error)
+	GetEventByCodeEvent(contactID int64, codeEvent string) (dtos.EventsDto, error)
 }
 
 // Implementación del servicio
@@ -60,6 +61,14 @@ func (s *eventsServiceImpl) GenerateUniqueCode() (string, error) {
 		}
 		attempts++
 	}
+}
+func (s *eventsServiceImpl) GetEventByCodeEvent(contactID int64, codeEvent string) (dtos.EventsDto, error) {
+	// Llamamos al repositorio pasando el contactID y el codeEvent
+	event, err := s.repo.FindByContactAndCodeEvent(contactID, codeEvent)
+	if err != nil {
+		return dtos.EventsDto{}, fmt.Errorf("error fetching event by code_event: %v", err)
+	}
+	return entities.MapEntityToEventsDto(event), nil
 }
 
 func (s *eventsServiceImpl) GetEventByContactAndDate(contactID int64, date, currentTime string) ([]entities.Events, error) {

@@ -16,6 +16,7 @@ type EventsDto struct {
 	AssistantsID          int64  `json:"assistants_id"`
 	ContactsID            int64  `json:"contacts_id"`
 	CodeEvent             string `json:"code_event"`
+	CreatedAt             string `json:"created_at"`
 }
 
 // MapCalendarEventToEventsDto convierte un evento de Google Calendar a EventsDto

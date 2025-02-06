@@ -355,31 +355,44 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 		currentTimeStr := time.Now().Format(time.RFC3339)
 
 		// Se obtiene el evento del contacto para la fecha indicada y con hora >= a la actual
-		eventFound, err := service.eventsService.GetEventByContactAndDate(contact.ID, assistantResp.UserData.MeetingDate, currentTimeStr)
+		eventFound, err := service.eventsService.GetEventByCodeEvent(contact.ID, assistantResp.UserData.EventCode)
 		if err != nil {
 			responseUser = "Lo siento, no tengo pero no pudimos encontrar el turno que mencionas. Te puedes ayudar viendo los turnos que tenes en la fecha que quieres consultar. 😊"
 			break
 		}
-		if eventFound == nil || len(eventFound) <= 0 {
+		if eventFound.ID <= 0 {
 			return fmt.Errorf("no se encontró un evento para el contacto %d en la fecha %s con hora mayor o igual a %s", contact.ID, assistantResp.UserData.MeetingDate, currentTimeStr)
 		}
 
+		newDateStrToDate, err := time.Parse("2006-01-02T15:04:05", assistantResp.UserData.NewDate)
+		if err != nil {
+			fmt.Println("Error al parsear la fecha:", err)
+			return err
+		}
+
+		// Sumar 30 minutos
+		endDate := newDateStrToDate.Add(30 * time.Minute)
+		endDateStr := endDate.Format("2006-01-02T15:04:05")
+
 		// Actualizar el evento en la base de datos con la información nueva
 		eventDTO := dtos.EventsDto{
-			ID:           eventFound[0].ID,
-			Summary:      assistantResp.UserData.UserName,
-			Description:  "Contacto: " + assistantResp.UserData.UserEmail + "\n De: " + strconv.Itoa(int(contact.NumberPhone)),
-			StartDate:    assistantResp.UserData.MeetingDate,
-			EndDate:      assistantResp.UserData.MeetingDate,
+			ID:           eventFound.ID,
+			Summary:      eventFound.Summary,
+			Description:  eventFound.Description,
+			StartDate:    assistantResp.UserData.NewDate,
+			EndDate:      endDateStr,
 			AssistantsID: assistant.ID,
 			ContactsID:   contact.ID,
-			CodeEvent:    eventFound[0].CodeEvent,
+			CodeEvent:    eventFound.CodeEvent,
+			CreatedAt:    eventFound.CreatedAt,
 		}
 
 		err = service.eventsService.Update(eventDTO)
 		if err != nil {
 			return err
 		}
+
+		responseUser = "✅ Su reunion ha sido modificada con éxito. Si nesesitas cualquier otra cosa, estoy acá para ayudarte 😊"
 
 	case "deleteEvent":
 		err = service.eventsService.Cancel(assistantResp.UserData.EventCode)
