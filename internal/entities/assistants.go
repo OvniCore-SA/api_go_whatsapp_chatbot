@@ -17,10 +17,12 @@ type Assistant struct {
 	Model              string
 	Instructions       string
 	// Horarios de trabajo
-	WorkStartTime            string                   `gorm:"type:varchar(5);"`  // Hora de inicio (HH:mm)
-	WorkEndTime              string                   `gorm:"type:varchar(5);"`  // Hora de fin (HH:mm)
-	DaysOpen                 string                   `gorm:"type:varchar(60);"` // Días abiertos como una lista (ejemplo: "lunes,martes,miercoles,jueves,viernes")
-	Active                   bool                     `gorm:"not null;default:true"`
+	WorkStartTime string `gorm:"type:varchar(5);"`  // Hora de inicio (HH:mm)
+	WorkEndTime   string `gorm:"type:varchar(5);"`  // Hora de fin (HH:mm)
+	DaysOpen      string `gorm:"type:varchar(60);"` // Días abiertos como una lista (ejemplo: "lunes,martes,miercoles,jueves,viernes")
+	Active        bool   `gorm:"not null;default:true"`
+	EventDuration int64  `gorm:"not null;default:30"` // Duración por defecto de cada cita o turno
+
 	AccountGoogle            bool                     `gorm:"default:false"`
 	NumberPhones             []NumberPhone            `gorm:"foreignKey:AssistantsID"`
 	GoogleCalendarCredential GoogleCalendarCredential `gorm:"foreignKey:AssistantsID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`

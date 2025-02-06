@@ -63,13 +63,13 @@ func (s *eventsServiceImpl) GenerateUniqueCode() (string, error) {
 }
 
 func (s *eventsServiceImpl) GetEventByContactAndDate(contactID int64, date, currentTime string) ([]entities.Events, error) {
-	parsedDate, err := time.Parse("2006-01-02T15:04:05", date)
-	if err != nil {
-		return nil, fmt.Errorf("error parsing date: %v", err)
-	}
-	// Formateamos la fecha al formato DATETIME de MySQL: "2006-01-02 15:04:05"
-	formattedSearchDate := parsedDate.Format("2006-01-02 15:04:05")
-	return s.repo.FindByContactAndDateAndTime(contactID, formattedSearchDate, currentTime)
+	// parsedDate, err := time.Parse("2006-01-02T15:04:05", date)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("error parsing date: %v", err)
+	// }
+	// // Formateamos la fecha al formato DATETIME de MySQL: "2006-01-02 15:04:05"
+	// formattedSearchDate := parsedDate.Format("2006-01-02 15:04:05")
+	return s.repo.FindByContactAndDateAndTime(contactID, date, currentTime)
 }
 
 func (s *eventsServiceImpl) IsCodeUnique(code string) (bool, error) {

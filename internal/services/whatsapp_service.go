@@ -237,16 +237,15 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 		return nil
 	}
 
-	// start_date y end_date de Google Calendar
-	startDateStr := assistantResp.UserData.StartDate
-	endDateStr := assistantResp.UserData.EndDate
-
 	// 3. Lógica según assistantResp.Function
 	switch assistantResp.Function {
 
 	case "getMeetingDetails":
 		fmt.Print("getMeetingDetails")
-	case "getEvents":
+	case "getMeetings":
+
+		// start_date y end_date de Google Calendar
+		startDateStr := assistantResp.UserData.DateToSearch
 
 		formattedTime := currentTime.Format("2006-01-02 15:04:05")
 
@@ -261,8 +260,13 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 		}
 
 		formattedStartStr := parsedStart.Format("02-01-2006")
+		if len(eventsDB) == 0 {
+			responseUser = fmt.Sprintf("⚠️ *No hay eventos programados para el %s.*\n\nParece que no tienes eventos agendados para esta fecha. Si necesitas crear alguno o tienes alguna consulta, no dudes en contactarnos. 😊", formattedStartStr)
+			break
+		}
+
 		// Formatear la cabecera con un mensaje claro y visualmente atractivo
-		responseUser = fmt.Sprintf("📅 *A continuación te listamos eventos programados para el %s*:\n\n", formattedStartStr)
+		responseUser = fmt.Sprintf("🌟 *Eventos programados para el %s*:\n\n", formattedStartStr)
 
 		for i, event := range eventsDB {
 			// Intentar parsear las fechas (se asume formato RFC3339)
@@ -278,17 +282,16 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 			formattedStart := startTime.Format("15:04")
 			formattedEnd := endTime.Format("15:04")
 
-			// Agregar los detalles del evento con un formato más ordenado y emojis para claridad
+			// Agregar los detalles del evento con un formato más visual y emojis para claridad
 			responseUser += fmt.Sprintf(
-				"%s\n🔹 *Título:* %s\n🕒 *Inicio:* %s\n⏰ *Fin:* %s\n────────────────────────\n",
-				service.utilService.GetNumberEmoji(i+1),
+				"🔶 *Evento #%d:* %s\n⏰ *Hora de Inicio:* %s\n⏳ *Hora de Fin:* %s\n\n🔏 *Código:* %s\n────────────────────────\n",
+				i+1,
 				event.Summary,
 				formattedStart,
 				formattedEnd,
+				event.CodeEvent,
 			)
 		}
-
-		fmt.Println(responseUser)
 
 	case "createMeeting":
 		// Solo ejecutamos si assistant.AccountGoogle == true
@@ -298,10 +301,20 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 			return fmt.Errorf("error creating event: %v", err)
 		}
 
+		endDateStrToDate, err := time.Parse("2006-01-02T15:04:05", assistantResp.UserData.MeetingDate)
+		if err != nil {
+			fmt.Println("Error al parsear la fecha:", err)
+			return err
+		}
+
+		// Sumar 30 minutos
+		endDate := endDateStrToDate.Add(30 * time.Minute)
+		endDateStr := endDate.Format("2006-01-02T15:04:05")
+
 		eventDTO := dtos.EventsDto{
-			Summary:      assistantResp.UserData.Nombre,
-			Description:  "Contacto: " + assistantResp.UserData.Email + "\n Tel: " + assistantResp.UserData.Phone,
-			StartDate:    startDateStr,
+			Summary:      assistantResp.UserData.UserName,
+			Description:  "Contacto: " + assistantResp.UserData.UserEmail + "\n Tel: " + strconv.Itoa(int(contact.NumberPhone)),
+			StartDate:    assistantResp.UserData.MeetingDate,
 			EndDate:      endDateStr,
 			AssistantsID: assistant.ID,
 			ContactsID:   contact.ID,
@@ -316,7 +329,7 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 		}
 
 		// Parsear las fechas en el formato esperado
-		startDateTime, err := time.Parse("2006-01-02T15:04:05", startDateStr)
+		startDateTime, err := time.Parse("2006-01-02T15:04:05", assistantResp.UserData.MeetingDate)
 		if err != nil {
 			fmt.Printf("Error al procesar la fecha de inicio: %v\n", err)
 			return err
@@ -334,31 +347,30 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 
 		// Mensaje de respuesta
 		responseUser = fmt.Sprintf(
-			"✅ ¡Tu reunion ha sido agendada con éxito! 📅\n\n🕒 Inicio: %s \n🕒 Fin: %s.\n\nTe esperamos... ¡Que tengas un excelente día! 😊",
-			formattedStart, formattedEnd,
-		)
+			"✅ ¡Tu reunion ha sido agendada con éxito! 📅\n\n🕒 Inicio: %s \n🕒 Fin: %s.\n🔏 Código: %s\n\nTe esperamos... ¡Que tengas un excelente día! 😊",
+			formattedStart, formattedEnd, eventDTO.CodeEvent)
 
 	case "updateEvents":
 		// Convertir la fecha actual al formato adecuado (se asume RFC3339)
 		currentTimeStr := time.Now().Format(time.RFC3339)
 
 		// Se obtiene el evento del contacto para la fecha indicada y con hora >= a la actual
-		eventFound, err := service.eventsService.GetEventByContactAndDate(contact.ID, assistantResp.UserData.StartDate, currentTimeStr)
+		eventFound, err := service.eventsService.GetEventByContactAndDate(contact.ID, assistantResp.UserData.MeetingDate, currentTimeStr)
 		if err != nil {
 			responseUser = "Lo siento, no tengo pero no pudimos encontrar el turno que mencionas. Te puedes ayudar viendo los turnos que tenes en la fecha que quieres consultar. 😊"
 			break
 		}
 		if eventFound == nil || len(eventFound) <= 0 {
-			return fmt.Errorf("no se encontró un evento para el contacto %d en la fecha %s con hora mayor o igual a %s", contact.ID, assistantResp.UserData.StartDate, currentTimeStr)
+			return fmt.Errorf("no se encontró un evento para el contacto %d en la fecha %s con hora mayor o igual a %s", contact.ID, assistantResp.UserData.MeetingDate, currentTimeStr)
 		}
 
 		// Actualizar el evento en la base de datos con la información nueva
 		eventDTO := dtos.EventsDto{
 			ID:           eventFound[0].ID,
-			Summary:      assistantResp.UserData.Nombre,
-			Description:  "Contacto: " + assistantResp.UserData.Email + "\n Tel: " + assistantResp.UserData.Phone,
-			StartDate:    assistantResp.UserData.StartDate,
-			EndDate:      assistantResp.UserData.EndDate,
+			Summary:      assistantResp.UserData.UserName,
+			Description:  "Contacto: " + assistantResp.UserData.UserEmail + "\n De: " + strconv.Itoa(int(contact.NumberPhone)),
+			StartDate:    assistantResp.UserData.MeetingDate,
+			EndDate:      assistantResp.UserData.MeetingDate,
 			AssistantsID: assistant.ID,
 			ContactsID:   contact.ID,
 			CodeEvent:    eventFound[0].CodeEvent,
@@ -374,7 +386,7 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 		if err != nil {
 			return err
 		}
-		responseUser = "✅ Su turno ha sido eliminado con éxito. Si nesesitas cualquier otra cosa, estoy acá para ayudarte 😊"
+		responseUser = "✅ Su turno ha sido cancelado con éxito. Si nesesitas cualquier otra cosa, estoy acá para ayudarte 😊"
 
 	default:
 		// El texto a mostrar al usuario viene en assistantResp.Message
