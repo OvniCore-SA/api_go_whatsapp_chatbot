@@ -251,7 +251,7 @@ func (s *AssistantService) UpdateAssistantWithFile(id int64, data dtos.Assistant
 		if err != nil {
 			return dtos.AssistantDto{}, err
 		}
-		fmt.Println("FILE '%s' eliminado.", fileIDOpenAI)
+		fmt.Printf("FILE '%s' eliminado.", fileIDOpenAI)
 		return dtos.AssistantDto{}, errors.New("failed to assign file to vector store")
 	}
 

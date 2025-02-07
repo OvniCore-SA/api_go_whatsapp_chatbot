@@ -20,6 +20,7 @@ type EventsRepository interface {
 	FindByContactAndDateAndTime(contactID int64, date string, currentTime string) ([]entities.Events, error)
 	ExistsByCode(code string) (bool, error)
 	FindByContactAndCodeEvent(contactID int64, codeEvent string) (entities.Events, error)
+	FindByContactDateAndNumberPhone(contactID int64, date string, assistantID int64) ([]entities.Events, error)
 }
 
 // Implementación del repositorio
@@ -29,6 +30,20 @@ type eventsRepositoryImpl struct {
 
 func NewEventsRepository(db *gorm.DB) EventsRepository {
 	return &eventsRepositoryImpl{db: db}
+}
+
+func (r *eventsRepositoryImpl) FindByContactDateAndNumberPhone(contactID int64, date string, assistantID int64) ([]entities.Events, error) {
+	var events []entities.Events
+
+	// Realizamos la consulta filtrando por contacts_id, fecha y number_phones_id
+	err := r.db.
+		Where("contacts_id = ? AND DATE(start_date) = ? AND assistants_id = ?", contactID, date, assistantID).
+		Find(&events).Error
+
+	if err != nil {
+		return nil, fmt.Errorf("error finding events by contact, date, and number_phone_id: %v", err)
+	}
+	return events, nil
 }
 
 func (r *eventsRepositoryImpl) FindByContactAndCodeEvent(contactID int64, codeEvent string) (entities.Events, error) {

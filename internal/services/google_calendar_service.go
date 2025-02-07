@@ -167,7 +167,7 @@ func GetGoogleUserID(client *http.Client, token *oauth2.Token) (string, error) {
 			log.Println(resp.StatusCode)
 			return "", err
 		}
-		log.Println("Segunda consulta: %d", resp.StatusCode)
+		log.Printf("Segunda consulta: %d", resp.StatusCode)
 
 		return "", errors.New("error al obtener la información del usuario de Google")
 	}

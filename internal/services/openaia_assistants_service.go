@@ -524,12 +524,12 @@ func (s *OpenAIAssistantService) EnviarToolOutputs(threadID, runID string, toolC
 	return nil
 }
 
-func (s *OpenAIAssistantService) WaitForRunCompletion(threadID, runID string, maxRetries int, retryInterval time.Duration) error {
+func (s *OpenAIAssistantService) WaitForRunCompletion(threadID, runID string, maxRetries int, retryInterval time.Duration) (requiredAction openairuns.OpenAIRunResponse, err error) {
 	for i := 0; i < maxRetries; i++ {
 		// Crear la solicitud HTTP para consultar el estado del run
 		req, err := http.NewRequest("GET", fmt.Sprintf("%s/threads/%s/runs/%s", os.Getenv("OPENAI_API_URL"), threadID, runID), nil)
 		if err != nil {
-			return fmt.Errorf("error creating request: %v", err)
+			return requiredAction, fmt.Errorf("error creating request: %v", err)
 		}
 
 		// Enviar la solicitud y procesar la respuesta
@@ -539,40 +539,44 @@ func (s *OpenAIAssistantService) WaitForRunCompletion(threadID, runID string, ma
 			resp, err = s.doRequest(req)
 		}
 		if err != nil {
-			return fmt.Errorf("error sending request to OpenAI: %v", err)
+			return requiredAction, fmt.Errorf("error sending request to OpenAI: %v", err)
 		}
 		defer resp.Body.Close()
 
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			return fmt.Errorf("error reading response body: %v", err)
+			return requiredAction, fmt.Errorf("error reading response body: %v", err)
 		}
 
 		// Ahora decodificar la respuesta en la estructura
 		var result openairuns.OpenAIRunResponse
 		if err := json.Unmarshal(body, &result); err != nil {
-			return fmt.Errorf("error decoding response: %v", err)
+			return requiredAction, fmt.Errorf("error decoding response: %v", err)
 		}
 
 		// Verificar el estado del run
 		switch result.Status {
 		case "completed":
+			fmt.Printf("RUN STATUS: completed")
 			// Si está completado, retornar sin error
-			return nil
+			return requiredAction, nil
 		case "incomplete":
+			fmt.Printf("RUN STATUS: incomplete")
 			// Si está incomplete, retornar sin error
-			return nil
-		case "failed", "cancelled", "expired":
+			return requiredAction, nil
+		case "failed", "cancelled", "expired", "cancelling":
 			// Si el run falla o es cancelado, retornar error
-			return fmt.Errorf("run ended with status: %s", result.Status)
+			return requiredAction, fmt.Errorf("run ended with status: %s", result.Status)
 		case "requires_action":
+			fmt.Printf("RUN STATUS: requires_action")
 			// Si requiere acción, enviar tool_outputs
 			err := s.EnviarToolOutputs(threadID, runID, result.RequiredAction.SubmitToolOutputs.ToolCalls)
 			if err != nil {
-				return err
+				return requiredAction, err
 			}
+
 			i = 0
-			continue
+			return result, err
 		default:
 			// Si está en progreso o en cola, esperar y reintentar
 			fmt.Printf("Run status: %s, retrying...\n", result.Status)
@@ -581,7 +585,7 @@ func (s *OpenAIAssistantService) WaitForRunCompletion(threadID, runID string, ma
 	}
 
 	// Si se agotan los reintentos, retornar error
-	return fmt.Errorf("run did not complete after %d retries", maxRetries)
+	return requiredAction, fmt.Errorf("run did not complete after %d retries", maxRetries)
 }
 
 func (s *OpenAIAssistantService) GetMessagesFromThread(threadID string) (string, error) {
@@ -594,6 +598,7 @@ func (s *OpenAIAssistantService) GetMessagesFromThread(threadID string) (string,
 	// Enviar la solicitud y procesar la respuesta
 	resp, err := s.doRequest(req)
 	if err != nil {
+		fmt.Println("error al obtener mensaje de OpenAI: doRequest")
 		return "", fmt.Errorf("error sending request to OpenAI: %v", err)
 	}
 	defer resp.Body.Close()

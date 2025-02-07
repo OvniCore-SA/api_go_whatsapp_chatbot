@@ -26,6 +26,7 @@ type EventsService interface {
 	// Genera un codigo unico para un nuevo evento.
 	GenerateUniqueCode() (string, error)
 	GetEventByCodeEvent(contactID int64, codeEvent string) (dtos.EventsDto, error)
+	GetEventsByContactDateAndNumberPhone(contactID int64, date string, assistantID int64) ([]entities.Events, error)
 }
 
 // Implementación del servicio
@@ -72,13 +73,23 @@ func (s *eventsServiceImpl) GetEventByCodeEvent(contactID int64, codeEvent strin
 }
 
 func (s *eventsServiceImpl) GetEventByContactAndDate(contactID int64, date, currentTime string) ([]entities.Events, error) {
-	// parsedDate, err := time.Parse("2006-01-02T15:04:05", date)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("error parsing date: %v", err)
-	// }
-	// // Formateamos la fecha al formato DATETIME de MySQL: "2006-01-02 15:04:05"
-	// formattedSearchDate := parsedDate.Format("2006-01-02 15:04:05")
 	return s.repo.FindByContactAndDateAndTime(contactID, date, currentTime)
+}
+
+func (s *eventsServiceImpl) GetEventsByContactDateAndNumberPhone(contactID int64, date string, assistantID int64) ([]entities.Events, error) {
+	// Validamos que la fecha tenga el formato adecuado
+	parsedDate, err := time.Parse("2006-01-02", date)
+	if err != nil {
+		return nil, fmt.Errorf("invalid date format, use YYYY-MM-DD: %v", err)
+	}
+
+	// Llamamos al repositorio para obtener los eventos
+	events, err := s.repo.FindByContactDateAndNumberPhone(contactID, parsedDate.Format("2006-01-02"), assistantID)
+	if err != nil {
+		return nil, err
+	}
+
+	return events, nil
 }
 
 func (s *eventsServiceImpl) IsCodeUnique(code string) (bool, error) {

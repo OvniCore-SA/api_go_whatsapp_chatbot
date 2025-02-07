@@ -49,7 +49,7 @@ func (s *UsersService) Create(dto dtos.UsersDto) error {
 	}
 
 	// Asigno el rol normal (USER).
-	rolUser, err := s.rolesService.GetByRol(os.Getenv("ROL_USER"))
+	rolUser, _ := s.rolesService.GetByRol(os.Getenv("ROL_USER"))
 	dto.RolesID = rolUser.ID
 
 	// Encriptar la contraseña

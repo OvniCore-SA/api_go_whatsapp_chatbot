@@ -16,6 +16,7 @@ import (
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/config"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos/openaiassistantdtos"
+	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos/openaiassistantdtos/openairuns"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos/whatsapp"
 	metaapi "github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos/whatsapp/metaApi"
 	whatsappservicedto "github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos/whatsapp_service_DTO"
@@ -244,17 +245,25 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 		fmt.Print("getMeetingDetails")
 	case "getMeetings":
 
-		// start_date y end_date de Google Calendar
+		var eventsDB []entities.Events
 		startDateStr := assistantResp.UserData.DateToSearch
+		// Si el contacto es el dueño configurado para recibir notificaciones, se buscan todos los eventos que estan relacionados a ese NumberPhone. Si no, se obtienen los eventos de un contactos.
+		if numberPhone.NumberPhoneToNotify == contact.NumberPhone {
+			eventsDB, err = service.eventsService.GetEventsByContactDateAndNumberPhone(contact.ID, startDateStr, assistant.ID)
+			if err != nil {
+				return fmt.Errorf("error retrieving events by contact, date, and numberPhoneID: %v", err)
+			}
+		} else {
 
-		formattedTime := currentTime.Format("2006-01-02 15:04:05")
-
-		eventsDB, err := service.eventsService.GetEventByContactAndDate(contact.ID, startDateStr, formattedTime)
-		if err != nil {
-			return fmt.Errorf("error parsing end_date: %v", err)
+			startDateStr := assistantResp.UserData.DateToSearch
+			formattedTime := currentTime.Format("2006-01-02 15:04:05")
+			eventsDB, err = service.eventsService.GetEventByContactAndDate(contact.ID, startDateStr, formattedTime)
+			if err != nil {
+				return fmt.Errorf("error retrieving events by contact, date, and time: %v", err)
+			}
 		}
 
-		parsedStart, err := time.Parse("2006-01-02T15:04:05", startDateStr)
+		parsedStart, err := service.utilService.ParseDateString(startDateStr, FormatTypeDateForPersona)
 		if err != nil {
 			parsedStart = time.Now() // fallback en caso de error
 		}
@@ -284,7 +293,7 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 
 			// Agregar los detalles del evento con un formato más visual y emojis para claridad
 			responseUser += fmt.Sprintf(
-				"🔶 *Evento #%d:* %s\n⏰ *Hora de Inicio:* %s\n⏳ *Hora de Fin:* %s\n\n🔏 *Código:* %s\n────────────────────────\n",
+				"🔶 *Evento #%d:* %s\n⏰ *Hora de Inicio:* %s\n⏳ *Hora de Fin:* %s\n\n🔏 *Código:* %s\n────────────────\n",
 				i+1,
 				event.Summary,
 				formattedStart,
@@ -294,19 +303,54 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 		}
 
 	case "createMeeting":
-		fmt.Println("\nCreando evento...\n\n")
+		fmt.Println("Creando evento...")
 		fmt.Println(response)
-		// Solo ejecutamos si assistant.AccountGoogle == true
-		code, err := service.eventsService.GenerateUniqueCode()
-		if err != nil {
-			log.Printf("Error generating unique event code: %v", err)
-			return fmt.Errorf("error creating event: %v", err)
-		}
+
+		formattedTime := currentTime.Format("2006-01-02 15:04:05")
 
 		endDateStrToDate, err := time.Parse("2006-01-02T15:04:05", assistantResp.UserData.MeetingDate)
 		if err != nil {
 			fmt.Println("Error al parsear la fecha:", err)
 			return err
+		}
+
+		dateToSearch := endDateStrToDate.Format("2006-01-02")
+		eventsExists, err := service.eventsService.GetEventByContactAndDate(contact.ID, dateToSearch, formattedTime)
+		if err != nil {
+			log.Printf("Error retrieving event by contact and date: %v", err)
+			return fmt.Errorf("failed to create event: %v", err)
+		}
+		if len(eventsExists) > 0 {
+			event := eventsExists[0] // Tomamos el primer evento porque solo debe haber uno activo
+
+			// Intentamos parsear las fechas del evento
+			startTime, err := time.Parse(time.RFC3339, event.StartDate)
+			if err != nil {
+				startTime = time.Now() // fallback en caso de error
+			}
+			endTime, err := time.Parse(time.RFC3339, event.EndDate)
+			if err != nil {
+				endTime = time.Now() // fallback en caso de error
+			}
+
+			// Formateamos las fechas en un formato amigable
+			formattedStart := startTime.Format("15:04")
+			formattedEnd := endTime.Format("15:04")
+
+			// Mensaje para informar al usuario que ya tiene un turno en esa fecha
+			responseUser = fmt.Sprintf(
+				"⚠️ *Ya tienes un turno programado para esta fecha.*\n\n📅 *Fecha:* %s\n⏰ *Hora de Inicio:* %s\n⏳ *Hora de Fin:* %s\n🔏 *Código:* %s\n\nSi deseas cambiar la fecha y hora de tu turno o cancelarlo, por favor háznoslo saber.",
+				endDateStrToDate.Format("02-01-2006"), formattedStart, formattedEnd, event.CodeEvent,
+			)
+
+			break
+		}
+
+		// Solo ejecutamos si assistant.AccountGoogle == true
+		code, err := service.eventsService.GenerateUniqueCode()
+		if err != nil {
+			log.Printf("Error generating unique event code: %v", err)
+			return fmt.Errorf("error creating event: %v", err)
 		}
 
 		startDateStrToDate, err := time.Parse("2006-01-02T15:04:05", assistantResp.UserData.MeetingDate)
@@ -315,7 +359,7 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 			return err
 		}
 
-		startDateToStr := startDateStrToDate.Format("2006-01-02")
+		startDateToStr := startDateStrToDate.Format("2006-01-02 15:04:05")
 
 		// Sumar 30 minutos
 		endDate := endDateStrToDate.Add(30 * time.Minute)
@@ -505,7 +549,7 @@ func saveMessageWithUniqueID(service *WhatsappService, numberPhoneID, contactID 
 	return nil
 }
 
-func (s *WhatsappService) InteractWithAssistant(threadID, assistantID, message string) (string, error) {
+func (s *WhatsappService) InteractWithAssistant(threadID, assistantID, message string) (response string, err error) {
 
 	// Verificar si es seguro proceder (sin runs activos)
 	safeToProceed, err := s.CheckForActiveRuns(threadID)
@@ -529,18 +573,73 @@ func (s *WhatsappService) InteractWithAssistant(threadID, assistantID, message s
 	fmt.Printf("Run created: %s\n", runID)
 
 	// Esperar a que el run esté completado
-	err = s.openAIAssistantService.WaitForRunCompletion(threadID, runID, 30, 2*time.Second)
+	requiredAction, err := s.openAIAssistantService.WaitForRunCompletion(threadID, runID, 30, 2*time.Second)
 	if err != nil {
 		return "", fmt.Errorf("error waiting for run completion: %v", err)
 	}
 
-	// Obtener los mensajes del thread y encontrar la respuesta del asistente
-	response, err := s.openAIAssistantService.GetMessagesFromThread(threadID)
-	if err != nil {
-		return "", fmt.Errorf("error getting messages from thread: %v", err)
+	// el assistant manda la funcion pero en un estado de required action, se pasa a JSON el objeto y se devuelve como string para ser decodificado y usado luego
+	if requiredAction.RequiredAction.Type == "submit_tool_outputs" && len(requiredAction.RequiredAction.SubmitToolOutputs.ToolCalls) > 0 {
+		response, err = convertToAssistantJSON(requiredAction)
+		if err != nil {
+			return "", fmt.Errorf("error getting messages from thread: %v", err)
+		}
+	} else {
+		// Obtener los mensajes del thread y encontrar la respuesta del asistente
+		response, err = s.openAIAssistantService.GetMessagesFromThread(threadID)
+		if err != nil {
+			return "", fmt.Errorf("error getting messages from thread: %v", err)
+		}
 	}
 
 	return response, nil
+}
+
+// ConvertToAssistantJSON convierte OpenAIRunResponse en AssistantJSONResponse
+func convertToAssistantJSON(response openairuns.OpenAIRunResponse) (string, error) {
+	// Verifica que haya una acción requerida
+
+	// Obtiene la primera toolCall (ajusta si pueden haber varias)
+	toolCall := response.RequiredAction.SubmitToolOutputs.ToolCalls[0]
+
+	// Decodifica los argumentos JSON
+	var args map[string]string
+	if err := json.Unmarshal([]byte(toolCall.Function.Arguments), &args); err != nil {
+		return "", fmt.Errorf("error al decodificar los argumentos: %v", err)
+	}
+
+	// Crea la respuesta
+	assistantResponse := openaiassistantdtos.AssistantJSONResponse{
+		Function: toolCall.Function.Name,
+	}
+
+	// Mapea los argumentos decodificados a la estructura AssistantJSONResponse
+	if val, exists := args["user_name"]; exists {
+		assistantResponse.UserData.UserName = val
+	}
+	if val, exists := args["user_email"]; exists {
+		assistantResponse.UserData.UserEmail = val
+	}
+	if val, exists := args["meeting_date"]; exists {
+		assistantResponse.UserData.MeetingDate = val
+	}
+	if val, exists := args["event_code"]; exists {
+		assistantResponse.UserData.EventCode = val
+	}
+	if val, exists := args["new_date"]; exists {
+		assistantResponse.UserData.NewDate = val
+	}
+	if val, exists := args["date_to_search"]; exists {
+		assistantResponse.UserData.DateToSearch = val
+	}
+
+	// Convierte la estructura a JSON
+	jsonResponse, err := json.Marshal(assistantResponse)
+	if err != nil {
+		return "", fmt.Errorf("error al serializar AssistantJSONResponse: %v", err)
+	}
+
+	return string(jsonResponse), nil
 }
 
 // CheckForActiveRuns checks if there are any active runs for a given thread and retries a few times if there are.
