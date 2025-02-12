@@ -164,10 +164,10 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 		if err != nil {
 			return fmt.Errorf("error creating new thread: %v", err)
 		}
+
 		contact.NumberPhonesID = numberPhone.ID
 		contact.OpenaiThreadsID = threadID
 		config.DB.Save(contact)
-
 		// Obtengo el vector_store que usa el assistant
 		files, err := service.assistantService.serviceFile.GetFileByAssistantID(assistant.ID)
 		if err != nil {
@@ -177,13 +177,15 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 		var vectorStoreID dtos.FileDto
 		if len(files) > 0 {
 			vectorStoreID = files[len(files)-1]
+			// Asigno el archivo al hilo.
+			err = service.openAIAssistantService.EjecutarThread(threadID, []string{vectorStoreID.OpenaiVectorStoreIDs})
+			if err != nil {
+				return fmt.Errorf("error EjecutarThread: %v", err)
+			}
+		} else {
+			fmt.Println("Assistant sin file")
 		}
 
-		// Asigno el archivo al hilo.
-		err = service.openAIAssistantService.EjecutarThread(threadID, []string{vectorStoreID.OpenaiVectorStoreIDs})
-		if err != nil {
-			return fmt.Errorf("error EjecutarThread: %v", err)
-		}
 	}
 
 	// Guardar el mensaje del contacto en la base de datos

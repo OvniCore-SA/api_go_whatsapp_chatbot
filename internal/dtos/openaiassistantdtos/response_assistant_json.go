@@ -7,6 +7,7 @@ type AssistantJSONResponse struct {
 		UserName    string `json:"user_name,omitempty"`    // Nombre del usuario
 		UserEmail   string `json:"user_email,omitempty"`   // Correo del usuario
 		MeetingDate string `json:"meeting_date,omitempty"` // Fecha y hora de la reunión en formato ISO 8601
+		UserPhone   string `json:"user_phone,omitempty"`   // Telefono del usuario
 
 		// Para "updateEvents"
 		// Para "deleteEvent" y "getMeetingDetails"
