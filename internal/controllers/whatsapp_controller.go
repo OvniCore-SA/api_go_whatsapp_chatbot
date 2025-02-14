@@ -26,12 +26,14 @@ func (controller *WhatsappController) PostWhatsapp(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).SendString("Invalid request body")
 	}
 
-	// Lógica principal delegada al servicio de WhatsApp
-	err := controller.service.HandleIncomingMessageWithAssistant(responseComplet)
-	if err != nil {
-		fmt.Println("ERROR PROCESANDING THE MESSAGE")
-		fmt.Println(err.Error())
-	}
+	go func() {
+		// Lógica principal delegada al servicio de WhatsApp
+		err := controller.service.HandleIncomingMessageWithAssistant(responseComplet)
+		if err != nil {
+			fmt.Println("ERROR PROCESANDING THE MESSAGE")
+			fmt.Println(err.Error())
+		}
+	}()
 
 	// Respuesta de éxito
 	return c.Status(fiber.StatusOK).SendString("Message processed successfully")
