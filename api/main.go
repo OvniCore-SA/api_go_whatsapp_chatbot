@@ -88,6 +88,12 @@ func main() {
 	Password_resetsService := services.NewPassword_resetsService(Password_resetsRepository)
 	Password_resetsController := controllers.NewPassword_resetsController(Password_resetsService)
 	MessageRepository := mysql_client.NewMessagesRepository(db)
+	MessageService := services.NewMessagesService(MessageRepository)
+	MessageController := controllers.NewMessagesController(MessageService)
+
+	ContactRepository := mysql_client.NewContactsRepository(db)
+	ContactService := services.NewContactsService(ContactRepository)
+	ContactController := controllers.NewContactsController(ContactService)
 
 	RolesController := controllers.NewRolesController(RolesService)
 	PermissionsRepository := mysql_client.NewPermissionsRepository(db)
@@ -144,7 +150,7 @@ func main() {
 	app.Use(meddlewares.SecureHeadersMiddleware())
 
 	// Configuración de TODAS las rutas
-	routes.Setup(app, &meddlewares, AuthController, FileController, AssistantController, BussinessController, UsersController, LogsController, Password_resetsController, RolesController, PermissionsController, WhatsappController, NumberPhonesController, TelegramController, OauthConfig, GoogleCalendarService)
+	routes.Setup(app, &meddlewares, AuthController, FileController, AssistantController, BussinessController, UsersController, LogsController, Password_resetsController, RolesController, PermissionsController, WhatsappController, NumberPhonesController, TelegramController, OauthConfig, GoogleCalendarService, MessageController, ContactController)
 
 	log.Fatal(app.Listen(":" + os.Getenv("APP_PORT")))
 }

@@ -6,19 +6,21 @@ import (
 )
 
 type AssistantDto struct {
-	ID                   int64                    `json:"id"`
-	BussinessID          int64                    `json:"bussiness_id"`
-	Name                 string                   `json:"name"`
-	OpenaiAssistantsID   string                   `json:"openai_assistants_id,omitempty"`
-	Description          string                   `json:"description,omitempty"`
-	Model                string                   `json:"model,omitempty"`
-	Instructions         string                   `json:"instructions,omitempty"`
-	Active               bool                     `json:"active"`
-	AccountGoogle        bool                     `json:"account_google"`
-	Bussiness            BussinessDto             `json:"bussiness,omitempty"`
-	NumberPhones         []NumberPhoneDto         `json:"number_phones,omitempty"`
-	GoogleCalendarConfig *GoogleCalendarConfigDto `json:"google_calendar_credential,omitempty"`
-	Events               []EventsDto              `json:"events,omitempty"`
+	ID                 int64            `json:"id"`
+	BussinessID        int64            `json:"bussiness_id"`
+	Name               string           `json:"name"`
+	OpenaiAssistantsID string           `json:"openai_assistants_id,omitempty"`
+	Description        string           `json:"description,omitempty"`
+	Model              string           `json:"model,omitempty"`
+	Instructions       string           `json:"instructions,omitempty"`
+	Active             bool             `json:"active"`
+	EventDuration      int64            `json:"event_duration"`
+	AccountGoogle      bool             `json:"account_google"`
+	Bussiness          BussinessDto     `json:"bussiness,omitempty"`
+	NumberPhones       []NumberPhoneDto `json:"number_phones,omitempty"`
+	Events             []EventsDto      `json:"events,omitempty"`
+	OpeningDays        uint8            `json:"opening_days"`  // Días de apertura representados en un entero de 7 bits
+	WorkingHours       string           `json:"working_hours"` // Horarios de trabajo en formato "HH:MM-HH:MM,HH:MM-HH:MM"
 }
 
 func (dto *AssistantDto) ValidateAssistantDto(isCreate bool) error {
@@ -67,23 +69,23 @@ func (dto *AssistantDto) ValidateAssistantDto(isCreate bool) error {
 	}
 
 	// Validar GoogleCalendarConfig si está presente
-	if dto.GoogleCalendarConfig != nil {
-		if dto.GoogleCalendarConfig.GoogleUserID == "" {
-			return errors.New("google_user_id es obligatorio en google_calendar_credential")
-		}
+	// if dto.GoogleCalendarConfig != nil {
+	// 	if dto.GoogleCalendarConfig.GoogleUserID == "" {
+	// 		return errors.New("google_user_id es obligatorio en google_calendar_credential")
+	// 	}
 
-		if dto.GoogleCalendarConfig.AccessToken == "" {
-			return errors.New("access_token es obligatorio en google_calendar_credential")
-		}
+	// 	if dto.GoogleCalendarConfig.AccessToken == "" {
+	// 		return errors.New("access_token es obligatorio en google_calendar_credential")
+	// 	}
 
-		if dto.GoogleCalendarConfig.RefreshToken == "" {
-			return errors.New("refresh_token es obligatorio en google_calendar_credential")
-		}
+	// 	if dto.GoogleCalendarConfig.RefreshToken == "" {
+	// 		return errors.New("refresh_token es obligatorio en google_calendar_credential")
+	// 	}
 
-		if dto.GoogleCalendarConfig.TokenExpiry.IsZero() {
-			return errors.New("token_expiry es obligatorio en google_calendar_credential")
-		}
-	}
+	// 	if dto.GoogleCalendarConfig.TokenExpiry.IsZero() {
+	// 		return errors.New("token_expiry es obligatorio en google_calendar_credential")
+	// 	}
+	// }
 
 	return nil
 }

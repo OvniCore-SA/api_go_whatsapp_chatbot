@@ -348,7 +348,7 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 			break
 		}
 
-		// Solo ejecutamos si assistant.AccountGoogle == true
+		// Generamos un código único para el evento
 		code, err := service.eventsService.GenerateUniqueCode()
 		if err != nil {
 			log.Printf("Error generating unique event code: %v", err)
@@ -364,7 +364,7 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 		startDateToStr := startDateStrToDate.Format("2006-01-02 15:04:05")
 
 		// Sumar 30 minutos
-		endDate := endDateStrToDate.Add(30 * time.Minute)
+		endDate := endDateStrToDate.Add(time.Duration(assistant.EventDuration) * time.Minute)
 		endDateStr := endDate.Format("2006-01-02T15:04:05")
 
 		eventDTO := dtos.EventsDto{
@@ -463,7 +463,7 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 	}
 
 	// 4. Guardar la respuesta que le daremos al usuario
-	err = saveMessageWithUniqueID(service, int(numberPhone.NumberPhone), int(contact.ID), responseUser)
+	err = saveMessageWithUniqueID(service, int(numberPhone.ID), int(contact.ID), responseUser)
 	if err != nil {
 		return fmt.Errorf("error saving contact message: %v", err)
 	}
@@ -607,6 +607,7 @@ func convertToAssistantJSON(response openairuns.OpenAIRunResponse) (string, erro
 	// Decodifica los argumentos JSON
 	var args map[string]string
 	if err := json.Unmarshal([]byte(toolCall.Function.Arguments), &args); err != nil {
+		fmt.Printf("error al decodificar los argumentos (convertToAssistantJSON): %v", err)
 		return "", fmt.Errorf("error al decodificar los argumentos: %v", err)
 	}
 

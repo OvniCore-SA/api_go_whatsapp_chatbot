@@ -49,3 +49,17 @@ func (s *ContactsService) Update(id string, dto dtos.ContactDto) error {
 func (s *ContactsService) Delete(id string) error {
 	return s.repository.Delete(id)
 }
+
+func (s *ContactsService) GetContactsByNumberPhone(numberPhoneID int64, page int, limit int) ([]dtos.ContactDto, int, error) {
+	contacts, total, err := s.repository.GetContactsByNumberPhone(numberPhoneID, page, limit)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	dtos := make([]dtos.ContactDto, len(contacts))
+	for i, contact := range contacts {
+		dtos[i] = entities.MapEntityToContactDto(contact)
+	}
+
+	return dtos, total, nil
+}

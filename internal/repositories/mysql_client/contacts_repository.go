@@ -15,6 +15,45 @@ func NewContactsRepository(db *gorm.DB) *ContactsRepository {
 	return &ContactsRepository{db: db}
 }
 
+func (r *ContactsRepository) GetContactsByNumberPhone(numberPhoneID int64, page int, limit int) ([]entities.Contact, int, error) {
+	var contacts []entities.Contact
+	var total int64
+
+	// Contar el total de registros antes de aplicar paginación
+	err := r.db.Model(&entities.Contact{}).
+		Where("number_phones_id = ?", numberPhoneID).
+		Where("deleted_at IS NULL").
+		Count(&total).Error
+
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Evitar valores inválidos en paginación
+	if page < 1 {
+		page = 1
+	}
+	if limit <= 0 {
+		limit = 10
+	}
+
+	offset := (page - 1) * limit
+
+	// Obtener los registros paginados
+	err = r.db.
+		Where("number_phones_id = ?", numberPhoneID).
+		Where("deleted_at IS NULL").
+		Limit(limit).
+		Offset(offset).
+		Find(&contacts).Error
+
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return contacts, int(total), nil
+}
+
 // Create inserts a new contact record into the database
 func (r *ContactsRepository) Create(record entities.Contact) error {
 	return r.db.Create(&record).Error

@@ -79,3 +79,60 @@ func (r *MessagesRepository) GetMessagesWithContacts(numberIDs []int64, since ti
 
 	return messages, nil
 }
+
+// DoesNumberPhoneExist - Verifica si un número de teléfono existe en la base de datos
+func (r *MessagesRepository) DoesNumberPhoneExist(numberPhoneID int64) (bool, error) {
+	var count int64
+
+	err := r.db.Model(&entities.NumberPhone{}).
+		Where("id = ?", numberPhoneID).
+		Count(&count).Error
+
+	if err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
+}
+
+// GetMessagesByNumberPhone - Obtiene los mensajes asociados a un número de teléfono específico con paginación
+func (r *MessagesRepository) GetMessagesByNumberPhone(numberPhoneID int64, page int, limit int) ([]entities.Message, int, error) {
+	var messages []entities.Message
+	var total int64
+
+	// Contar el total de registros antes de aplicar paginación
+	err := r.db.Model(&entities.Message{}).
+		Joins("JOIN contacts ON contacts.id = messages.contacts_id").
+		Where("messages.number_phones_id = ? AND contacts.deleted_at IS NULL", numberPhoneID).
+		Count(&total).Error
+
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Evitar valores inválidos en paginación
+	if page < 1 {
+		page = 1
+	}
+	if limit <= 0 {
+		limit = 10
+	}
+
+	offset := (page - 1) * limit
+
+	// Obtener los registros paginados
+	err = r.db.
+		Joins("JOIN contacts ON contacts.id = messages.contacts_id").
+		Where("messages.number_phones_id = ? AND contacts.deleted_at IS NULL", numberPhoneID).
+		Order("messages.created_at DESC").
+		Limit(limit).
+		Offset(offset).
+		Preload("Contact").
+		Find(&messages).Error
+
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return messages, int(total), nil
+}

@@ -23,7 +23,9 @@ func Setup(app *fiber.App,
 	NumberPhonesController *controllers.NumberPhonesController,
 	TelegramService *controllers.TelegramController,
 	OauthConfig *oauth2.Config,
-	GoogleCalendarService *services.GoogleCalendarService) {
+	GoogleCalendarService *services.GoogleCalendarService,
+	MessageController *controllers.MessagesController,
+	ContactController *controllers.ContactsController) {
 
 	app.Get("/", middleware.ValidarApikey(), func(c *fiber.Ctx) error {
 		return c.Send([]byte("Api chatbot whatsapp by OVNICORE  ®️ "))
@@ -45,6 +47,9 @@ func Setup(app *fiber.App,
 	api.Put("/files/:id", middleware.ValidarApikey(), FileController.UpdateFile)
 	api.Delete("/files/:id", middleware.ValidarApikey(), FileController.DeleteFile)
 
+	// MESSAGE
+	api.Get("/messages/:number_phone_id", middleware.ValidarApikey(), MessageController.GetMessagesByNumberPhone)
+
 	api.Post("/login", AuthController.Login)
 	api.Post("/restore-password", AuthController.RestorePassword)
 	api.Post("/reset-password", AuthController.ResetPassword)
@@ -65,6 +70,9 @@ func Setup(app *fiber.App,
 	api.Post("/events", middleware.ValidarApikey(), UsersController.Create)
 	api.Put("/events/:id", middleware.ValidarApikey(), UsersController.Update)
 	api.Delete("/events/:id", middleware.ValidarApikey(), UsersController.Delete)
+
+	// CONTACTS
+	api.Get("/contacts/number_phone/:number_phone_id", middleware.ValidarApikey(), ContactController.GetMessagesByNumberPhone)
 
 	api.Get("/users", middleware.ValidarApikey(), UsersController.GetAll)
 	api.Get("/users/:id", middleware.ValidarApikey(), UsersController.GetById)
