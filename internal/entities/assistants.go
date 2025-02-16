@@ -60,6 +60,8 @@ func MapAssistantToDto(a Assistant) dtos.AssistantDto {
 		Active:             a.Active,
 		Bussiness:          bussiness,
 		EventDuration:      a.EventDuration,
+		OpeningDays:        a.OpeningDays,
+		WorkingHours:       a.WorkingHours,
 		//GoogleCalendarConfig: googleCalendarCredential,
 		AccountGoogle: a.AccountGoogle,
 	}
@@ -88,6 +90,8 @@ func MapDtoToAssistant(dto dtos.AssistantDto) Assistant {
 		EventDuration:      dto.EventDuration,
 		Instructions:       dto.Instructions,
 		Active:             dto.Active,
+		OpeningDays:        dto.OpeningDays,
+		WorkingHours:       dto.WorkingHours,
 		//GoogleCalendarCredential: googleCalendarCredential,
 	}
 }

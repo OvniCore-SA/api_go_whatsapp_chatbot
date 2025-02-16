@@ -1,6 +1,10 @@
 package mysql_client
 
 import (
+	"errors"
+	"fmt"
+	"time"
+
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities"
 	"gorm.io/gorm"
 )
@@ -19,6 +23,41 @@ func (r *AssistantRepository) Create(data *entities.Assistant) error {
 		return err
 	}
 	return nil
+}
+
+// IsWithinWorkingHours verifica si una fecha y hora están dentro del horario de atención de un asistente
+func (r *AssistantRepository) IsWithinWorkingHours(assistantID int64, dateTime time.Time) (bool, error) {
+	var assistant entities.Assistant
+	err := r.db.First(&assistant, assistantID).Error
+	if err != nil {
+		return false, fmt.Errorf("assistant not found: %v", err)
+	}
+
+	// Obtener el día de la semana (0 = Domingo, 1 = Lunes, ..., 6 = Sábado)
+	weekday := int(dateTime.Weekday())
+
+	// Verificar si el bit del día está activado en OpeningDays
+	if (assistant.OpeningDays & (1 << weekday)) == 0 {
+		return false, nil // El asistente no trabaja en este día
+	}
+
+	// Parsear el horario de trabajo
+	var openHour, openMin, closeHour, closeMin int
+	_, err = fmt.Sscanf(assistant.WorkingHours, "%d:%d-%d:%d", &openHour, &openMin, &closeHour, &closeMin)
+	if err != nil {
+		return false, errors.New("invalid WorkingHours format")
+	}
+
+	// Crear objetos de tiempo para los límites de horario
+	openTime := time.Date(dateTime.Year(), dateTime.Month(), dateTime.Day(), openHour, openMin, 0, 0, dateTime.Location())
+	closeTime := time.Date(dateTime.Year(), dateTime.Month(), dateTime.Day(), closeHour, closeMin, 0, 0, dateTime.Location())
+
+	// Verificar si la hora actual está dentro del rango
+	if dateTime.Before(openTime) || dateTime.After(closeTime) {
+		return false, nil
+	}
+
+	return true, nil
 }
 
 // FindByAssistantID retrieves all number phones associated with a specific assistant

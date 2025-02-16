@@ -208,7 +208,13 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 
 	// Formatear la fecha y hora en un formato legible: "31 de enero de 2025 a las 15:04"
 	formattedTime := currentTime.Format("02/01/2006 15:04")
-	text += fmt.Sprintf("\n\n\nFecha y hora actual en Argentina: %s", formattedTime)
+
+	// Formatear los días de apertura y los horarios de trabajo
+	availableDaysText := service.utilService.FormatOpeningDays(assistant.OpeningDays)
+	workingHoursText := service.utilService.FormatWorkingHours(assistant.WorkingHours)
+
+	// Crear el texto final
+	text += fmt.Sprintf("Fecha y hora actual en Argentina: %s\n%s\n%s", formattedTime, availableDaysText, workingHoursText)
 
 	// Enviar el mensaje a OpenAI
 	response, err := service.InteractWithAssistant(threadID, assistant.OpenaiAssistantsID, text)
@@ -306,7 +312,11 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 
 	case "createMeeting":
 		fmt.Println("Creando evento...")
-		fmt.Println(response)
+		fmt.Print("========= RESPONSE ASSISTANT ==========")
+		fmt.Print(response)
+		fmt.Print("========== RESPONSE PARSED =========")
+		fmt.Print(assistantResp)
+		fmt.Print("===================")
 
 		formattedTime := currentTime.Format("2006-01-02 15:04:05")
 
@@ -314,6 +324,18 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 		if err != nil {
 			fmt.Println("Error al parsear la fecha:", err)
 			return err
+		}
+
+		// Verificar si la fecha y hora están dentro del rango de trabajo del asistente
+		isAvailable, err := service.assistantService.IsWithinWorkingHours(assistant.ID, endDateStrToDate)
+		if err != nil {
+			fmt.Println("Error al verificar las horas de trabajo:", err)
+			return err
+		}
+
+		if !isAvailable {
+			responseUser = " Lo siento 🙁, no estamos disponible en el horario seleccionado. Por favor, elige otro horario 💪"
+			break
 		}
 
 		dateToSearch := endDateStrToDate.Format("2006-01-02")
@@ -424,6 +446,18 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 		if err != nil {
 			fmt.Println("Error al parsear la fecha:", err)
 			return err
+		}
+
+		// Verificar si el asistente tiene disponibilidad en la nueva fecha y hora
+		isAvailable, err := service.assistantService.IsWithinWorkingHours(assistant.ID, newDateStrToDate)
+		if err != nil {
+			fmt.Println("Error al verificar las horas de trabajo:", err)
+			return err
+		}
+
+		if !isAvailable {
+			responseUser = "⚠️ Lo siento, el asistente no está disponible en el horario seleccionado para actualizar el turno. Por favor, elige otro horario."
+			break
 		}
 
 		// Sumar 30 minutos
@@ -718,11 +752,12 @@ func (s *WhatsappService) NotifyInteractions(horasAtras uint) error {
 				continue
 			}
 
-			messagePromt := "Quiero que revises este hilo de conversación y, dentro de un lapso de 6 horas atrás, identifiques si algún usuario acordó una reunión. Para que sea válida, debe haber proporcionado explícitamente los siguientes datos: su nombre y correo electrónico, siendo opcional el número de celular.\nSi encuentras estos datos, respóndeme únicamente en el siguiente formato y nada más:\n\n[Nombre del usuario]\n[Correo del usuario]\n[Número de celular] (indica 'No proporcionado' si no lo dio). SOLO LOS DATOS, NO EL NOMBRE DE CADA DATO.\n\nSi no encuentras ninguna reunión dentro del lapso indicado o si los datos no están completos, responde únicamente con 'No se encontró información de reuniones.' No proporciones nada adicional ni interpretes respuestas parciales."
-			response, err := s.InteractWithAssistant(contact.OpenaiThreadsID, number.Assistant.OpenaiAssistantsID, messagePromt)
-			if err != nil {
-				return fmt.Errorf("error interacting with assistant: %v", err)
-			}
+			// messagePromt := "Quiero que revises este hilo de conversación y, dentro de un lapso de 6 horas atrás, identifiques si algún usuario acordó una reunión. Para que sea válida, debe haber proporcionado explícitamente los siguientes datos: su nombre y correo electrónico, siendo opcional el número de celular.\nSi encuentras estos datos, respóndeme únicamente en el siguiente formato y nada más:\n\n[Nombre del usuario]\n[Correo del usuario]\n[Número de celular] (indica 'No proporcionado' si no lo dio). SOLO LOS DATOS, NO EL NOMBRE DE CADA DATO.\n\nSi no encuentras ninguna reunión dentro del lapso indicado o si los datos no están completos, responde únicamente con 'No se encontró información de reuniones.' No proporciones nada adicional ni interpretes respuestas parciales."
+			// response, err := s.InteractWithAssistant(contact.OpenaiThreadsID, number.Assistant.OpenaiAssistantsID, messagePromt)
+			// if err != nil {
+			// 	return fmt.Errorf("error interacting with assistant: %v", err)
+			// }
+			response := ""
 
 			// Construir el mensaje para el asistente
 

@@ -9,6 +9,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities"
@@ -192,6 +193,17 @@ func (s *AssistantService) FindAssistantById(id int64) (dtos.AssistantDto, error
 		return dtos.AssistantDto{}, err
 	}
 	return entities.MapAssistantToDto(assistant), nil
+}
+
+// IsWithinWorkingHours verifica si la fecha y hora están dentro del horario de trabajo del asistente
+func (s *AssistantService) IsWithinWorkingHours(assistantID int64, dateTime time.Time) (bool, error) {
+	// Llamar al repositorio para obtener los datos del asistente
+	isAvailable, err := s.repository.IsWithinWorkingHours(assistantID, dateTime)
+	if err != nil {
+		return false, fmt.Errorf("error al verificar las horas de trabajo: %v", err)
+	}
+
+	return isAvailable, nil
 }
 
 func (s *AssistantService) UpdateAssistant(id int64, data dtos.AssistantDto) (dtos.AssistantDto, error) {

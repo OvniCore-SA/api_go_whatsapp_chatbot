@@ -2,6 +2,7 @@ package services
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"golang.org/x/exp/rand"
@@ -21,6 +22,67 @@ func NewUtilService() *UtilService {
 }
 
 type DateFormat string
+
+func (utilService *UtilService) FormatOpeningDays(openingDays uint8) string {
+	// Los días de la semana (0 = Domingo, 1 = Lunes, ..., 6 = Sábado)
+	daysOfWeek := []string{"Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"}
+
+	var availableDays []string
+	for i := 0; i < 7; i++ {
+		// Si el bit correspondiente está en 1, agregar el día a la lista
+		if (openingDays & (1 << i)) != 0 {
+			availableDays = append(availableDays, daysOfWeek[i])
+		}
+	}
+	return fmt.Sprintf("Abierto los días: %s", fmt.Sprint(availableDays))
+}
+
+func (utilService *UtilService) FormatWorkingHours(workingHours string) string {
+	// Se asume que el formato de WorkingHours es "HH:MM-HH:MM"
+	return fmt.Sprintf("Horario de trabajo: %s", workingHours)
+}
+
+// ConvertDateFormat convierte una fecha en string de cualquier formato válido a otro formato especificado.
+func (utilService *UtilService) ConvertDateFormat(dateStr, outputFormat string) (string, error) {
+	// Posibles formatos de entrada que puede recibir
+	inputFormats := []string{
+		"2006-01-02T15:04:05",
+		"2006-01-02",
+		"2006-01-02 15:04:05",
+		"01-02-2006",
+		"02-01-2006",
+		"02/01/2006",
+		"2006/01/02",
+		"02-01-2006 15:04:05",
+		"01/02/2006 15:04:05",
+		"Mon, 02 Jan 2006 15:04:05 MST",
+		time.RFC1123,
+		time.RFC1123Z,
+		time.RFC822,
+		time.RFC822Z,
+		time.RFC3339,
+		time.RFC3339Nano,
+	}
+
+	var parsedTime time.Time
+	var err error
+
+	// Intentar parsear con cada uno de los formatos hasta encontrar uno que funcione
+	for _, format := range inputFormats {
+		parsedTime, err = time.Parse(format, dateStr)
+		if err == nil {
+			break
+		}
+	}
+
+	// Si no se pudo parsear, devolver error
+	if err != nil {
+		return "", errors.New("formato de fecha no reconocido")
+	}
+
+	// Retornar la fecha en el formato deseado
+	return parsedTime.Format(outputFormat), nil
+}
 
 func (utilService *UtilService) ParseDateString(dateStr string, formatType DateFormat) (time.Time, error) {
 	formats := []string{
