@@ -332,7 +332,7 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 			fmt.Println("Error al verificar las horas de trabajo:", err)
 			return err
 		}
-
+		fmt.Print("Available?: ", isAvailable)
 		if !isAvailable {
 			responseUser = " Lo siento 🙁, no estamos disponible en el horario seleccionado. Por favor, elige otro horario 💪"
 			break
