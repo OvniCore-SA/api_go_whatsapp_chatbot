@@ -17,10 +17,12 @@ type Assistant struct {
 	Model              string
 	Instructions       string
 	// Horarios de trabajo
-	OpeningDays   uint8  `gorm:"not null"`         // Días de apertura
-	WorkingHours  string `gorm:"size:50;not null"` // Horarios de trabajo
-	Active        bool   `gorm:"not null;default:true"`
-	EventDuration int64  `gorm:"not null;default:30"` // Duración por defecto de cada cita o turno
+	OpeningDays      uint8  `gorm:"not null"`         // Días de apertura
+	WorkingHours     string `gorm:"size:50;not null"` // Horarios de trabajo
+	Active           bool   `gorm:"not null;default:true"`
+	EventDuration    int64  `gorm:"not null;default:30"` // Duración por defecto de cada cita o turno
+	EventType        string `gorm:"size:50;"`
+	EventCountPerDay int16  `gorm:"not null;default:1"`
 
 	AccountGoogle bool          `gorm:"default:false"`
 	NumberPhones  []NumberPhone `gorm:"foreignKey:AssistantsID"`
@@ -62,6 +64,8 @@ func MapAssistantToDto(a Assistant) dtos.AssistantDto {
 		EventDuration:      a.EventDuration,
 		OpeningDays:        a.OpeningDays,
 		WorkingHours:       a.WorkingHours,
+		EventType:          a.EventType,
+		EventCountPerDay:   a.EventCountPerDay,
 		//GoogleCalendarConfig: googleCalendarCredential,
 		AccountGoogle: a.AccountGoogle,
 	}
@@ -92,6 +96,8 @@ func MapDtoToAssistant(dto dtos.AssistantDto) Assistant {
 		Active:             dto.Active,
 		OpeningDays:        dto.OpeningDays,
 		WorkingHours:       dto.WorkingHours,
+		EventType:          dto.EventType,
+		EventCountPerDay:   dto.EventCountPerDay,
 		//GoogleCalendarCredential: googleCalendarCredential,
 	}
 }

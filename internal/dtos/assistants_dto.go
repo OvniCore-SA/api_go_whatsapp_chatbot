@@ -16,6 +16,8 @@ type AssistantDto struct {
 	Active             bool             `json:"active"`
 	EventDuration      int64            `json:"event_duration"`
 	AccountGoogle      bool             `json:"account_google"`
+	EventType          string           `json:"event_type"`
+	EventCountPerDay   int16            `json:"event_count_per_day"`
 	Bussiness          BussinessDto     `json:"bussiness,omitempty"`
 	NumberPhones       []NumberPhoneDto `json:"number_phones,omitempty"`
 	Events             []EventsDto      `json:"events,omitempty"`

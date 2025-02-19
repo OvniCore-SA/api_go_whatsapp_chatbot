@@ -314,7 +314,7 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 		fmt.Println("Creando evento...")
 		fmt.Print("========= RESPONSE ASSISTANT ==========")
 		fmt.Print(response)
-		fmt.Print("========== RESPONSE PARSED =========")
+		fmt.Print("========== RESPONSE PARSED ============")
 		fmt.Print(assistantResp)
 		fmt.Print("===================")
 
@@ -334,11 +334,22 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 		}
 		fmt.Print("\nIsAvailable?: ", isAvailable)
 		if !isAvailable {
-			responseUser = " Lo siento 🙁, no estamos disponible en el horario seleccionado. Por favor, elige otro horario 💪"
+			responseUser = fmt.Sprintf(" Lo siento 🙁, no estamos disponible en el horario seleccionado. Recuerda que el horario de atencion es de: %s Por favor, elige otro horario 💪", assistant.WorkingHours)
 			break
 		}
 
 		dateToSearch := endDateStrToDate.Format("2006-01-02")
+
+		// Verificar si el contacto ya tiene la cantidad maxima de eventos posibles en un dia.
+		eventsInDate, err := service.eventsService.GetEventsByContactDateAndNumberPhone(contact.ID, dateToSearch, assistant.ID)
+		if err != nil {
+			return fmt.Errorf("error retrieving events by contact, date, and numberPhoneID: %v", err)
+		}
+		if len(eventsInDate) >= int(assistant.EventCountPerDay) {
+			responseUser = fmt.Sprintf("Lo siento 🙁. La cantidad máxima de %s por día es de %d. Si deseas cancelar o modificar alguno, solo hazmelo saber.💪", assistant.EventType, assistant.EventCountPerDay)
+			break
+		}
+
 		eventsExists, err := service.eventsService.GetEventByContactAndDate(contact.ID, dateToSearch, formattedTime)
 		if err != nil {
 			log.Printf("Error retrieving event by contact and date: %v", err)
