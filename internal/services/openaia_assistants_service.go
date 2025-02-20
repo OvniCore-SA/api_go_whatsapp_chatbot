@@ -45,6 +45,15 @@ func (s *OpenAIAssistantService) doRequest(req *http.Request) (*http.Response, e
 	}
 
 	if resp.StatusCode >= 400 {
+		// Guardamos el cuerpo original y creamos un nuevo lector para poder imprimirlo sin agotarlo
+		bodyBytes, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+		fmt.Println("Respuesta de la API:", string(bodyBytes))
+
+		// Restauramos el cuerpo para que pueda ser leído nuevamente
+		resp.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 		return resp, fmt.Errorf("API request failed with status %d", resp.StatusCode)
 	}
 

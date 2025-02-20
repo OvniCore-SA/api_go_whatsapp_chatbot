@@ -204,17 +204,39 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 	if err != nil {
 		return fmt.Errorf("error cargando la zona horaria: %v", err)
 	}
+
 	currentTime := time.Now().In(loc)
 
-	// Formatear la fecha y hora en un formato legible: "31 de enero de 2025 a las 15:04"
-	formattedTime := currentTime.Format("02/01/2006 15:04")
+	// Obtener el día de la semana en inglés (e.g. "Monday")
+	weekdayEnglish := currentTime.Weekday().String()
+
+	// Mapa para traducir el nombre del día al español
+	daysInSpanish := map[string]string{
+		"Sunday":    "domingo",
+		"Monday":    "lunes",
+		"Tuesday":   "martes",
+		"Wednesday": "miércoles",
+		"Thursday":  "jueves",
+		"Friday":    "viernes",
+		"Saturday":  "sábado",
+	}
+
+	// Obtener el día en español; si no existe en el mapa (caso muy raro), se usa el valor en inglés
+	weekdaySpanish, ok := daysInSpanish[weekdayEnglish]
+	if !ok {
+		weekdaySpanish = weekdayEnglish
+	}
+
+	// Formatear fecha y hora en el formato habitual, agregando el día de la semana al inicio
+	// Ejemplo: "lunes, 31/01/2025 15:04"
+	formattedTime := fmt.Sprintf("%s, %s", strings.Title(weekdaySpanish), currentTime.Format("02/01/2006 15:04"))
 
 	// Formatear los días de apertura y los horarios de trabajo
 	availableDaysText := service.utilService.FormatOpeningDays(assistant.OpeningDays)
 	workingHoursText := service.utilService.FormatWorkingHours(assistant.WorkingHours)
 
 	// Crear el texto final
-	text += fmt.Sprintf("Fecha y hora actual en Argentina: %s\n%s\n%s", formattedTime, availableDaysText, workingHoursText)
+	text += fmt.Sprintf("\n\nFecha y hora actual en Argentina: %s\n%s\n%s", formattedTime, availableDaysText, workingHoursText)
 
 	// Enviar el mensaje a OpenAI
 	response, err := service.InteractWithAssistant(threadID, assistant.OpenaiAssistantsID, text)
