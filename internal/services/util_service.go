@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"time"
+	"unicode"
 
 	"golang.org/x/exp/rand"
 )
@@ -35,6 +36,16 @@ func (utilService *UtilService) FormatOpeningDays(openingDays uint8) string {
 		}
 	}
 	return fmt.Sprintf("Abierto los días: %s", fmt.Sprint(availableDays))
+}
+
+// CapitalizeFirstLetter convierte solo la primera letra del string en mayúscula
+func (utilService *UtilService) CapitalizeFirstLetter(input string) string {
+	if len(input) == 0 {
+		return input
+	}
+	runes := []rune(input)               // Convierte el string en runas para soportar caracteres Unicode
+	runes[0] = unicode.ToUpper(runes[0]) // Convierte la primera letra en mayúscula
+	return string(runes)
 }
 
 func (utilService *UtilService) FormatWorkingHours(workingHours string) string {
