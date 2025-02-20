@@ -439,6 +439,16 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 			"✅ ¡Tu reunion ha sido agendada con éxito! 📅\n\n🕒 Inicio: %s \n🕒 Fin: %s.\n🔏 Código: %s\n\nTe esperamos... ¡Que tengas un excelente día! 😊",
 			formattedStart, formattedEnd, eventDTO.CodeEvent)
 
+		// Notificar al cliente
+		//  Enviar la notificacion al cliente de que un usuario registró un turno o reunion
+		contactToString := strconv.Itoa(int(numberPhone.NumberPhoneToNotify))
+		textNotifyClient := fmt.Sprintf("✅ ¡Nueva reunion agendada! 📅\n\n 🔶 %s : *%s*\n⏰ *Hora de Inicio:* %sHs.\n⏳ *Hora de Fin:* %sHs.\n🔏 *Código:* %s.\n\n", assistant.EventType, eventDTO.Summary, formattedStart, formattedEnd, eventDTO.CodeEvent)
+		message := metaapi.NewSendMessageWhatsappBasic(textNotifyClient, contactToString)
+		err = service.sendMessageBasic(message, strconv.FormatInt(numberPhone.WhatsappNumberPhoneId, 10), numberPhone.TokenPermanent)
+		if err != nil {
+			fmt.Printf("ERROR AL NOTIFICAR EVENTO AL CLIENTE,\nERROR: %s \nCódigo de evento: %s", err, eventDTO.CodeEvent)
+		}
+
 	case "updateEvents":
 		// Convertir la fecha actual al formato adecuado (se asume RFC3339)
 		currentTimeStr := time.Now().Format(time.RFC3339)
