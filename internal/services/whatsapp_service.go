@@ -527,12 +527,43 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 
 		responseUser = "✅ Su reunion ha sido modificada con éxito. Si nesesitas cualquier otra cosa, estoy acá para ayudarte 😊"
 
+		// Notificar al cliente
+		//  Enviar la notificacion al cliente de que un usuario registró un turno o reunion
+		contactToString := strconv.Itoa(int(numberPhone.NumberPhoneToNotify))
+		textNotifyClient := fmt.Sprintf("✅ %s actualizada ! 📅\n\n 🔶 %s : *%s*\n⏰ *Hora de Inicio:* %sHs.\n⏳ *Hora de Fin:* %sHs.\n🔏 *Código:* %s.\n\n", service.utilService.CapitalizeFirstLetter(assistant.EventType), eventDTO.Summary, assistantResp.UserData.NewDate, endDate, eventDTO.CodeEvent)
+		message := metaapi.NewSendMessageWhatsappBasic(textNotifyClient, contactToString)
+		err = service.sendMessageBasic(message, strconv.FormatInt(numberPhone.WhatsappNumberPhoneId, 10), numberPhone.TokenPermanent)
+		if err != nil {
+			fmt.Printf("ERROR AL NOTIFICAR EVENTO AL CLIENTE,\nERROR: %s \nCódigo de evento: %s", err, eventDTO.CodeEvent)
+		}
+
 	case "deleteEvent":
 		err = service.eventsService.Cancel(assistantResp.UserData.EventCode)
 		if err != nil {
 			return err
 		}
-		responseUser = "✅ Su turno ha sido cancelado con éxito. Si nesesitas cualquier otra cosa, estoy acá para ayudarte 😊"
+		responseUser = fmt.Sprint("✅ Su turno con el código '%s' ha sido cancelado con éxito. Si nesesitas cualquier otra cosa, estoy acá para ayudarte 😊", assistantResp.UserData.EventCode)
+
+		event, err := service.eventsService.GetEventByCodeEvent(contact.ID, assistantResp.UserData.EventCode)
+		if err != nil {
+			return err
+		}
+		// // Notificar al cliente
+		// //  Enviar la notificacion al cliente de que un usuario registró un turno o reunion
+		contactToString := strconv.Itoa(int(numberPhone.NumberPhoneToNotify))
+		textNotifyClient := fmt.Sprintf("  \n\n 🔴 *Cancelación de Turno* \n\n🔶 %s : *%s*\n⏰ *Hora de Inicio:* %sHs.\n⏳ *Hora de Fin:* %sHs.\n🔏 *Código:* %s.\n\n⚠️ Su turno ha sido cancelado. Para más información, por favor, contáctenos.",
+			service.utilService.CapitalizeFirstLetter(assistant.EventType),
+			event.Summary,
+			event.StartDate,
+			event.EndDate,
+			event.CodeEvent,
+		)
+
+		message := metaapi.NewSendMessageWhatsappBasic(textNotifyClient, contactToString)
+		err = service.sendMessageBasic(message, strconv.FormatInt(numberPhone.WhatsappNumberPhoneId, 10), numberPhone.TokenPermanent)
+		if err != nil {
+			fmt.Printf("ERROR AL NOTIFICAR CANCELACIÓN DE EVENTO AL CLIENTE,\nERROR: %s \nCódigo de evento: %s", err, event.CodeEvent)
+		}
 
 	default:
 		// El texto a mostrar al usuario viene en assistantResp.Message
