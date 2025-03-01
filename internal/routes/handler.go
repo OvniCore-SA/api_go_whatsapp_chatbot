@@ -121,6 +121,8 @@ func Setup(app *fiber.App,
 
 	// Añadir estas rutas en tu archivo principal de rutas:
 	api.Get("/number-phones", middleware.ValidarApikey(), NumberPhonesController.GetAll)
+	api.Get("/number-phones/get-by-assistantID/:id", middleware.ValidarApikey(), NumberPhonesController.GetAllByAssistantID)
+
 	api.Get("/number-phones/:id", middleware.ValidarApikey(), NumberPhonesController.GetById)
 	api.Post("/number-phones", middleware.ValidarApikey(), NumberPhonesController.Create)
 	api.Put("/number-phones/:id", middleware.ValidarApikey(), NumberPhonesController.Update)

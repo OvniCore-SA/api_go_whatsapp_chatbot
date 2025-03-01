@@ -28,6 +28,20 @@ func (s *NumberPhonesService) GetAll() ([]dtos.NumberPhoneDto, error) {
 
 	return dtos, nil
 }
+func (s *NumberPhonesService) GetAllByAssistantID(assistantID int64) ([]dtos.NumberPhoneDto, error) {
+
+	records, err := s.repository.GetNumberPhonesByAssistantID(assistantID)
+	if err != nil {
+		return nil, err
+	}
+
+	dtos := make([]dtos.NumberPhoneDto, len(records))
+	for i, record := range records {
+		dtos[i] = entities.MapEntityToNumberPhoneDto(record)
+	}
+
+	return dtos, nil
+}
 
 func (s *NumberPhonesService) GetByFilter(filter filters.AssistantsFiltro) ([]dtos.NumberPhoneDto, error) {
 	records, err := s.repository.ListByFilter(filter)

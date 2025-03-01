@@ -16,6 +16,24 @@ func NewNumberPhonesController(service *services.NumberPhonesService) *NumberPho
 }
 
 func (controller *NumberPhonesController) GetAll(c *fiber.Ctx) error {
+
+	id := c.QueryInt("assistant_id")
+
+	if id > 0 {
+		item, err := controller.service.GetAllByAssistantID(int64(id))
+		if err != nil {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Item not found",
+			})
+		}
+		return c.Status(fiber.StatusCreated).JSON(fiber.Map{
+			"status":  true,
+			"message": "Numeros de telefono obtenidos con éxito",
+			"data":    item,
+		})
+	}
+
 	items, err := controller.service.GetAll()
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -23,7 +41,34 @@ func (controller *NumberPhonesController) GetAll(c *fiber.Ctx) error {
 			"message": err.Error(),
 		})
 	}
-	return c.JSON(items)
+	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
+		"status":  true,
+		"message": "Numeros de telefono obtenidos con éxito",
+		"data":    items,
+	})
+}
+
+func (controller *NumberPhonesController) GetAllByAssistantID(c *fiber.Ctx) error {
+	id, err := c.ParamsInt("id")
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Error: " + err.Error(),
+		})
+	}
+
+	item, err := controller.service.GetAllByAssistantID(int64(id))
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Item not found",
+		})
+	}
+	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
+		"status":  true,
+		"message": "Numeros de telefono obtenidos con éxito",
+		"data":    item,
+	})
 }
 
 func (controller *NumberPhonesController) GetById(c *fiber.Ctx) error {
@@ -35,7 +80,11 @@ func (controller *NumberPhonesController) GetById(c *fiber.Ctx) error {
 			"message": "Item not found",
 		})
 	}
-	return c.JSON(item)
+	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
+		"status":  true,
+		"message": "Numero de telefono obtenido con éxito",
+		"data":    item,
+	})
 }
 
 func (controller *NumberPhonesController) Create(c *fiber.Ctx) error {

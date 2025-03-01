@@ -47,6 +47,16 @@ func (r *NumberPhonesRepository) List() ([]entities.NumberPhone, error) {
 	return records, err
 }
 
+// GetNumberPhonesByAssistantID retrieves all number phones associated with a specific assistant
+func (r *NumberPhonesRepository) GetNumberPhonesByAssistantID(assistantID int64) ([]entities.NumberPhone, error) {
+	var numberPhones []entities.NumberPhone
+	err := r.db.Where("assistants_id = ?", assistantID).Find(&numberPhones).Error
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving number phones for assistant ID %d: %w", assistantID, err)
+	}
+	return numberPhones, nil
+}
+
 func (r *NumberPhonesRepository) ListByFilter(filter filters.AssistantsFiltro) ([]entities.NumberPhone, error) {
 	var records []entities.NumberPhone
 
