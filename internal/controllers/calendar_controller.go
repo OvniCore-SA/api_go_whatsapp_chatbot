@@ -16,6 +16,45 @@ import (
 	"google.golang.org/api/calendar/v3"
 )
 
+// GetRequestDetails obtiene todos los parámetros enviados en la solicitud.
+func GetRequestDetails() fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		// Obtener los headers
+		headers := make(map[string]string)
+		c.Request().Header.VisitAll(func(key, value []byte) {
+			headers[string(key)] = string(value)
+		})
+
+		// Obtener los parámetros de la URL
+		params := make(map[string]string)
+		for _, param := range c.Route().Params {
+			params[param] = c.Params(param)
+		}
+
+		// Obtener los parámetros de consulta (query params)
+		queryParams := make(map[string]string)
+		for key, values := range c.Queries() {
+			queryParams[key] = values
+		}
+
+		// Obtener el cuerpo de la solicitud (body)
+		var body map[string]interface{}
+		if err := c.BodyParser(&body); err != nil {
+			body = map[string]interface{}{
+				"error": "No se pudo parsear el body",
+			}
+		}
+
+		// Retornar todos los datos en JSON
+		return c.JSON(fiber.Map{
+			"headers":     headers,
+			"params":      params,
+			"queryParams": queryParams,
+			"body":        body,
+		})
+	}
+}
+
 // GetCalendarEvents obtiene los eventos del calendario.
 func GetCalendarEventsByDate(service *services.GoogleCalendarService, config *oauth2.Config) fiber.Handler {
 	return func(c *fiber.Ctx) error {

@@ -58,6 +58,7 @@ func Setup(app *fiber.App,
 	// Rutas de autenticación
 	app.Get("/auth/url", middleware.ValidarApikey(), controllers.GetAuthURL(OauthConfig))
 	app.Get("/auth/callback-auth", controllers.GetAuthToken(OauthConfig, GoogleCalendarService))
+	app.Get("/demo-redirect-url-post-auth", controllers.GetRequestDetails())
 
 	// GOOGLE CALENDAR
 	api.Get("/calendar/events", middleware.ValidarApikey(), controllers.GetCalendarEventsByDate(GoogleCalendarService, OauthConfig))
