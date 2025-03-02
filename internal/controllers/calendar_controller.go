@@ -64,7 +64,7 @@ func GetCalendarEventsByDate(service *services.GoogleCalendarService, config *oa
 }
 
 // AddCalendarEvent crea un nuevo evento en Google Calendar.
-func AddCalendarEvent(service *services.GoogleCalendarService, config *oauth2.Config) fiber.Handler {
+func AddCalendarEvent(service *services.GoogleCalendarService, config *oauth2.Config, contactService *services.ContactsService) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		assistantID, err := parseAssistantID(c.Query("assistant_id"))
 		if err != nil {
@@ -133,7 +133,15 @@ func AddCalendarEvent(service *services.GoogleCalendarService, config *oauth2.Co
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 		}
-		eventDto.ContactsID = eventDto.ContactsID
+
+		codeUnique, err := service.EventsService.GenerateUniqueCode()
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+		}
+
+		eventDto.ContactsID = int64(eventRequest.ContactsID)
+		eventDto.AssistantsID = assistantWihtGoogleConfig.ID
+		eventDto.CodeEvent = codeUnique
 
 		// Guardar en la base de datos usando EventsService
 		err = service.EventsService.Create(eventDto)

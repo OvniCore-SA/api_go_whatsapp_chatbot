@@ -25,7 +25,8 @@ func Setup(app *fiber.App,
 	OauthConfig *oauth2.Config,
 	GoogleCalendarService *services.GoogleCalendarService,
 	MessageController *controllers.MessagesController,
-	ContactController *controllers.ContactsController) {
+	ContactController *controllers.ContactsController,
+	ContactService *services.ContactsService) {
 
 	app.Get("/", middleware.ValidarApikey(), func(c *fiber.Ctx) error {
 		return c.Send([]byte("Api chatbot whatsapp by OVNICORE  ®️ "))
@@ -60,7 +61,7 @@ func Setup(app *fiber.App,
 
 	// GOOGLE CALENDAR
 	api.Get("/calendar/events", middleware.ValidarApikey(), controllers.GetCalendarEventsByDate(GoogleCalendarService, OauthConfig))
-	api.Post("/calendar/events", middleware.ValidarApikey(), controllers.AddCalendarEvent(GoogleCalendarService, OauthConfig))
+	api.Post("/calendar/events", middleware.ValidarApikey(), controllers.AddCalendarEvent(GoogleCalendarService, OauthConfig, ContactService))
 	api.Put("/calendar/events/:event_id", middleware.ValidarApikey(), controllers.UpdateCalendarEvent(GoogleCalendarService, OauthConfig))
 	api.Delete("/calendar/events/:event_id", middleware.ValidarApikey(), controllers.DeleteCalendarEvent(GoogleCalendarService, OauthConfig))
 

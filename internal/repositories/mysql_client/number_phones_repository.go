@@ -57,6 +57,16 @@ func (r *NumberPhonesRepository) GetNumberPhonesByAssistantID(assistantID int64)
 	return numberPhones, nil
 }
 
+// FindByAssistantID retrieves all number phones associated with a specific assistant
+func (r *NumberPhonesRepository) FindByAssistantID(assistantID int64) ([]entities.NumberPhone, error) {
+	var records []entities.NumberPhone
+	err := r.db.Where("assistants_id = ?", assistantID).Find(&records).Error
+	if err != nil {
+		return nil, err
+	}
+	return records, nil
+}
+
 func (r *NumberPhonesRepository) ListByFilter(filter filters.AssistantsFiltro) ([]entities.NumberPhone, error) {
 	var records []entities.NumberPhone
 

@@ -66,6 +66,13 @@ func (r *ContactsRepository) FindByID(id string) (entities.Contact, error) {
 	return record, err
 }
 
+func (r *ContactsRepository) FindByPhoneNumber(phoneNumber int64) (entities.Contact, error) {
+	var record entities.Contact
+	err := r.db.Where("number_phone = ?", phoneNumber).
+		Find(&record).Error
+	return record, err
+}
+
 // Update modifies an existing contact record
 func (r *ContactsRepository) Update(id string, record entities.Contact) error {
 	return r.db.Model(&record).Where("id = ?", id).Updates(record).Error

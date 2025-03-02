@@ -61,7 +61,7 @@ func (r *AssistantRepository) IsWithinWorkingHours(assistantID int64, dateTime t
 }
 
 // FindByAssistantID retrieves all number phones associated with a specific assistant
-func (r *NumberPhonesRepository) FindByAssistantID(assistantID int64) ([]entities.NumberPhone, error) {
+func (r *AssistantRepository) FindByAssistantID(assistantID int64) ([]entities.NumberPhone, error) {
 	var records []entities.NumberPhone
 	err := r.db.Where("assistants_id = ?", assistantID).Find(&records).Error
 	if err != nil {

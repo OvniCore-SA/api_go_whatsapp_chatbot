@@ -150,7 +150,7 @@ func main() {
 	app.Use(meddlewares.SecureHeadersMiddleware())
 
 	// Configuración de TODAS las rutas
-	routes.Setup(app, &meddlewares, AuthController, FileController, AssistantController, BussinessController, UsersController, LogsController, Password_resetsController, RolesController, PermissionsController, WhatsappController, NumberPhonesController, TelegramController, OauthConfig, GoogleCalendarService, MessageController, ContactController)
+	routes.Setup(app, &meddlewares, AuthController, FileController, AssistantController, BussinessController, UsersController, LogsController, Password_resetsController, RolesController, PermissionsController, WhatsappController, NumberPhonesController, TelegramController, OauthConfig, GoogleCalendarService, MessageController, ContactController, ContactService)
 
 	log.Fatal(app.Listen(":" + os.Getenv("APP_PORT")))
 }

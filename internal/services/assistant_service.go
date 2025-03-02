@@ -150,6 +150,18 @@ func (s *AssistantService) CreateAssistant(data dtos.AssistantDto) (dtos.Assista
 	return entities.MapAssistantToDto(assistant), nil
 }
 
+func (s *AssistantService) FindNumberPhonesByAssistantID(assistantID uint64) (dtos.NumberPhoneDto, error) {
+	numberPhone, err := s.repository.FindByAssistantID(int64(assistantID))
+	if err != nil {
+		return dtos.NumberPhoneDto{}, err
+	}
+	if len(numberPhone) <= 0 {
+		return dtos.NumberPhoneDto{}, fmt.Errorf("No hay numeros de telefonos para este assistant.")
+	}
+
+	return entities.MapEntityToNumberPhoneDto(numberPhone[0]), nil
+}
+
 func (s *AssistantService) DeleteOpenAIAssistant(assistantID string) error {
 	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/assistants/%s", os.Getenv("OPENAI_API_URL"), assistantID), nil)
 	if err != nil {

@@ -36,6 +36,14 @@ func (s *ContactsService) GetById(id string) (dtos.ContactDto, error) {
 	return entities.MapEntityToContactDto(record), nil
 }
 
+func (s *ContactsService) GetByPhoneNumber(phoneNumber int64) (dtos.ContactDto, error) {
+	record, err := s.repository.FindByPhoneNumber(phoneNumber)
+	if err != nil {
+		return dtos.ContactDto{}, err
+	}
+	return entities.MapEntityToContactDto(record), nil
+}
+
 func (s *ContactsService) Create(dto dtos.ContactDto) error {
 	record := entities.MapDtoToContact(dto)
 	return s.repository.Create(record)
