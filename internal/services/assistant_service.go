@@ -218,14 +218,85 @@ func (s *AssistantService) IsWithinWorkingHours(assistantID int64, dateTime time
 	return isAvailable, nil
 }
 
-func (s *AssistantService) UpdateAssistant(id int64, data dtos.AssistantDto) (dtos.AssistantDto, error) {
-	files, err := s.serviceFile.GetFileByAssistantID(id)
+// PartialUpdateAssistant actualiza solo los campos proporcionados en la solicitud
+func (s *AssistantService) PartialUpdateAssistant(id int64, data dtos.AssistantDto) (dtos.AssistantDto, error) {
+	// Obtener el registro actual
+	existingAssistant, err := s.repository.FindById(id)
 	if err != nil {
-		return dtos.AssistantDto{}, errors.New("failed to find files with assistantID")
+		return dtos.AssistantDto{}, errors.New("assistant not found")
 	}
+
+	EditNameOpenAI := false
+	EditInstructionsOpenAI := false
+	EditModelOpenAI := false
+
+	// Solo actualizamos los valores enviados en el body
+	if data.Name != "" {
+		existingAssistant.Name = data.Name
+		EditNameOpenAI = true
+	}
+	if data.Description != "" {
+		existingAssistant.Description = data.Description
+	}
+	if data.Model != "" {
+		existingAssistant.Model = data.Model
+		EditModelOpenAI = true
+	}
+	if data.Instructions != "" {
+		existingAssistant.Instructions = data.Instructions
+		EditInstructionsOpenAI = true
+	}
+	if data.OpenaiAssistantsID != "" {
+		existingAssistant.OpenaiAssistantsID = data.OpenaiAssistantsID
+	}
+	existingAssistant.Active = data.Active
+	if data.EventDuration > 0 {
+		existingAssistant.EventDuration = data.EventDuration
+	}
+	existingAssistant.AccountGoogle = data.AccountGoogle
+	if data.EventType != "" {
+		existingAssistant.EventType = data.EventType
+	}
+	if data.EventCountPerDay > 0 {
+		existingAssistant.EventCountPerDay = data.EventCountPerDay
+	}
+	if data.OpeningDays > 0 {
+		existingAssistant.OpeningDays = data.OpeningDays
+	}
+	if data.WorkingHours != "" {
+		existingAssistant.WorkingHours = data.WorkingHours
+	}
+
+	if EditInstructionsOpenAI || EditModelOpenAI || EditNameOpenAI {
+		// Se actualiza solo el campo que vino y si no se le coloca el que ya tenía porque se envia a actualizar a openAI
+		if !EditInstructionsOpenAI {
+			data.Instructions = existingAssistant.Instructions
+		}
+		if !EditModelOpenAI {
+			data.Model = existingAssistant.Model
+		}
+		if !EditNameOpenAI {
+			data.Name = existingAssistant.Name
+		}
+		data.OpenaiAssistantsID = existingAssistant.OpenaiAssistantsID
+		// Actualizo los datos del assistant en OPEN AI
+		if _, err := s.openAIAssistantService.EditAssistant(data.OpenaiAssistantsID, data.Name, data.Instructions, data.Model); err != nil {
+			return dtos.AssistantDto{}, err
+		}
+	}
+
+	// Guardamos los cambios en la base de datos
+	if err := s.repository.Update(id, existingAssistant); err != nil {
+		return dtos.AssistantDto{}, errors.New("failed to update assistant")
+	}
+
+	return entities.MapAssistantToDto(existingAssistant), nil
+}
+
+func (s *AssistantService) UpdateAssistant(id int64, data dtos.AssistantDto) (dtos.AssistantDto, error) {
+
 	// Actualizo los datos del assistant en OPEN AI
-	_, err = s.openAIAssistantService.EditAssistant(data.OpenaiAssistantsID, data.Name, data.Instructions, data.Model, files[0].OpenaiVectorStoreIDs)
-	if err != nil {
+	if _, err := s.openAIAssistantService.EditAssistant(data.OpenaiAssistantsID, data.Name, data.Instructions, data.Model); err != nil {
 		return dtos.AssistantDto{}, err
 	}
 
@@ -292,7 +363,7 @@ func (s *AssistantService) UpdateAssistantWithFile(id int64, data dtos.Assistant
 	}
 
 	// Actualizo los datos del assistant en OPEN AI
-	_, err = s.openAIAssistantService.EditAssistant(data.OpenaiAssistantsID, data.Name, data.Instructions, data.Model, files[0].OpenaiVectorStoreIDs)
+	_, err = s.openAIAssistantService.EditAssistant(data.OpenaiAssistantsID, data.Name, data.Instructions, data.Model)
 	if err != nil {
 		return dtos.AssistantDto{}, err
 	}

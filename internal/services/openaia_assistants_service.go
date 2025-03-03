@@ -120,7 +120,7 @@ func (s *OpenAIAssistantService) CreateAssistant(name, instructions, model, vect
 }
 
 // EditAssistant edita un asistente existente
-func (s *OpenAIAssistantService) EditAssistant(assistantID, name, instructions, model, vectorStoreID string) (string, error) {
+func (s *OpenAIAssistantService) EditAssistant(assistantID, name, instructions, model string) (string, error) {
 	data := map[string]interface{}{
 		"instructions": instructions,
 		"name":         name,

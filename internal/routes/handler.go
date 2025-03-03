@@ -38,7 +38,8 @@ func Setup(app *fiber.App,
 	api.Post("/assistants/add", middleware.ValidarApikey(), AssistantController.AddAssistant)
 	api.Get("/assistants/", middleware.ValidarApikey(), AssistantController.GetAllAssistants)
 	api.Get("/assistants/:id", middleware.ValidarApikey(), AssistantController.GetAssistant)
-	api.Put("/assistants/:id", middleware.ValidarApikey(), AssistantController.UpdateAssistant)
+	api.Put("/assistants/:id", middleware.ValidarApikey(), AssistantController.EditAssistant)
+	api.Patch("/assistants/:id", middleware.ValidarApikey(), AssistantController.UpdateAssistant)
 	api.Get("/assistants/getAssistantsByBussiness/:id", middleware.ValidarApikey(), AssistantController.GetAllAssistantsByBussinessId)
 	api.Delete("/assistants/:id", middleware.ValidarApikey(), AssistantController.DeleteAssistant)
 
@@ -57,7 +58,7 @@ func Setup(app *fiber.App,
 
 	// Rutas de autenticación
 	app.Get("/auth/url", middleware.ValidarApikey(), controllers.GetAuthURL(OauthConfig))
-	app.Get("/auth/callback-auth", controllers.GetAuthToken(OauthConfig, GoogleCalendarService))
+	app.Get("/auth/callback-auth", controllers.SaveOrUpdateAuthToken(OauthConfig, GoogleCalendarService))
 	app.Get("/demo-redirect-url-post-auth", controllers.GetRequestDetails())
 
 	// GOOGLE CALENDAR

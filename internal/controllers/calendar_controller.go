@@ -395,8 +395,17 @@ func GetAuthURL(config *oauth2.Config) fiber.Handler {
 		// Generar la URL de autenticación con el estado personalizado
 		authURL := config.AuthCodeURL(state, oauth2.AccessTypeOffline, oauth2.ApprovalForce)
 
+		var respData struct {
+			AuthUrl string `json:"auth_url"`
+		}
+
+		respData.AuthUrl = authURL
+
 		return c.JSON(fiber.Map{
-			"auth_url": authURL,
+
+			"data":    respData,
+			"message": "Url de autenticación en google obtenida exitosamente.",
+			"status":  true,
 		})
 	}
 }
@@ -421,11 +430,11 @@ func HandleAuthCallback(config *oauth2.Config) fiber.Handler {
 		}
 
 		// Guardar el token en un archivo (o en memoria/cache si prefieres)
-		if err := services.SaveToken("token.json", token); err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": "No se pudo guardar el token",
-			})
-		}
+		// if err := services.SaveToken("token.json", token); err != nil {
+		// 	return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+		// 		"error": "No se pudo guardar el token",
+		// 	})
+		// }
 
 		return c.JSON(fiber.Map{
 			"message": "Autenticación exitosa",
@@ -435,7 +444,7 @@ func HandleAuthCallback(config *oauth2.Config) fiber.Handler {
 	}
 }
 
-func GetAuthToken(config *oauth2.Config, googleCalendarService *services.GoogleCalendarService) fiber.Handler {
+func SaveOrUpdateAuthToken(config *oauth2.Config, googleCalendarService *services.GoogleCalendarService) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		// Capturar el código y el estado desde los parámetros de consulta
 		code := c.Query("code")

@@ -143,7 +143,7 @@ func main() {
 	app.Use(cors.New(cors.Config{
 		AllowOrigins: os.Getenv("HOST_VIEW"),
 		AllowHeaders: "",
-		AllowMethods: "GET,POST,PUT,DELETE",
+		AllowMethods: "GET,POST,PUT,DELETE,PATCH",
 	}))
 
 	// Registrar el middleware de cabeceras seguras

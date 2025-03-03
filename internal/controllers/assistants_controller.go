@@ -61,25 +61,29 @@ func (controller *AssistantController) AddAssistant(c *fiber.Ctx) error {
 	// Obtener el archivo de la solicitud
 	fileHeader, err := c.FormFile("file")
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "File is required"})
+		assistantDto, err = controller.service.CreateAssistant(assistantDto)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error creating assistant. " + err.Error()})
+		}
+
+	} else {
+		// Validar que el archivo tenga extensión .jsonl o .txt
+		if filepath.Ext(fileHeader.Filename) != ".txt" && filepath.Ext(fileHeader.Filename) != ".pdf" {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "File must be in .jsonl or .txt format"})
+		}
+
+		// Llamar al servicio AssistantService para crear el asistente, pasando el fileHeader
+		assistantDto, err = controller.service.CreateAssistantWithFile(assistantDto, fileHeader)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error creating assistant. " + err.Error()})
+		}
 	}
 
-	// Validar que el archivo tenga extensión .jsonl o .txt
-	if filepath.Ext(fileHeader.Filename) != ".txt" && filepath.Ext(fileHeader.Filename) != ".pdf" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "File must be in .jsonl or .txt format"})
-	}
-
-	// Llamar al servicio AssistantService para crear el asistente, pasando el fileHeader
-	newAssistant, err := controller.service.CreateAssistantWithFile(assistantDto, fileHeader)
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error creating assistant. " + err.Error()})
-	}
-
-	return c.Status(fiber.StatusCreated).JSON(fiber.Map{"message": "Assistant created successfully", "data": newAssistant})
+	return c.Status(fiber.StatusCreated).JSON(fiber.Map{"message": "Assistant created successfully", "data": assistantDto})
 }
 
 // Actualizar un asistente
-func (controller *AssistantController) UpdateAssistant(c *fiber.Ctx) error {
+func (controller *AssistantController) EditAssistant(c *fiber.Ctx) error {
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid ID"})
@@ -112,6 +116,31 @@ func (controller *AssistantController) UpdateAssistant(c *fiber.Ctx) error {
 		if err != nil {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": err.Error()})
 		}
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{"message": "Assistant updated successfully", "data": updatedAssistant, "status": true})
+}
+
+// UpdateAssistant actualiza los campos enviados en la solicitud sin sobrescribir valores no proporcionados
+func (controller *AssistantController) UpdateAssistant(c *fiber.Ctx) error {
+	id, err := strconv.Atoi(c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid ID"})
+	}
+
+	// Parseamos el body pero sin obligar a que vengan todos los campos
+	var assistantDto dtos.AssistantDto
+	if err := c.BodyParser(&assistantDto); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request"})
+	}
+
+	// Validamos el ID del assistant
+	assistantDto.ID = int64(id)
+
+	// Enviamos los datos al servicio para actualizar solo los campos proporcionados
+	updatedAssistant, err := controller.service.PartialUpdateAssistant(int64(id), assistantDto)
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": err.Error()})
 	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{"message": "Assistant updated successfully", "data": updatedAssistant, "status": true})
