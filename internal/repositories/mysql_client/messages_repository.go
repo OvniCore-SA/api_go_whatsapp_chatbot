@@ -136,3 +136,45 @@ func (r *MessagesRepository) GetMessagesByNumberPhone(numberPhoneID int64, page 
 
 	return messages, int(total), nil
 }
+
+// GetMessagesByNumberPhoneAndContact - Obtiene los mensajes asociados a un número de teléfono y contacto específico con paginación
+func (r *MessagesRepository) GetMessagesByNumberPhoneAndContact(numberPhoneID int64, contactID int64, page int, limit int) ([]entities.Message, int, error) {
+	var messages []entities.Message
+	var total int64
+
+	// Contar el total de registros antes de aplicar paginación
+	err := r.db.Model(&entities.Message{}).
+		Joins("JOIN contacts ON contacts.id = messages.contacts_id").
+		Where("messages.number_phones_id = ? AND messages.contacts_id = ? AND contacts.deleted_at IS NULL", numberPhoneID, contactID).
+		Count(&total).Error
+
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Evitar valores inválidos en paginación
+	if page < 1 {
+		page = 1
+	}
+	if limit <= 0 {
+		limit = 10
+	}
+
+	offset := (page - 1) * limit
+
+	// Obtener los registros paginados
+	err = r.db.
+		Joins("JOIN contacts ON contacts.id = messages.contacts_id").
+		Where("messages.number_phones_id = ? AND messages.contacts_id = ? AND contacts.deleted_at IS NULL", numberPhoneID, contactID).
+		Order("messages.created_at DESC").
+		Limit(limit).
+		Offset(offset).
+		Preload("Contact").
+		Find(&messages).Error
+
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return messages, int(total), nil
+}

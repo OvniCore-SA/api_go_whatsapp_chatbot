@@ -24,6 +24,13 @@ func (controller *MessagesController) GetMessagesByNumberPhone(c *fiber.Ctx) err
 			"message": "Número de teléfono inválido",
 		})
 	}
+	contactID := c.QueryInt("contact_id")
+	if contactID <= 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Número de contacto inválido",
+		})
+	}
 
 	page, _ := strconv.Atoi(c.Query("page", "1"))
 	limit, _ := strconv.Atoi(c.Query("limit", "10"))
@@ -43,7 +50,7 @@ func (controller *MessagesController) GetMessagesByNumberPhone(c *fiber.Ctx) err
 		})
 	}
 
-	messages, total, err := controller.service.GetMessagesByNumberPhone(numberPhoneID, page, limit)
+	messages, total, err := controller.service.GetMessagesByNumberPhoneAndContact(numberPhoneID, int64(contactID), page, limit)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  "error",
