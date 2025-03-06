@@ -112,9 +112,12 @@ func main() {
 	AssistantController := controllers.NewAssistantController(AssistantService)
 	EventsRepository := mysql_client.NewEventsRepository(db)
 	EventsService := services.NewEventsService(EventsRepository, *UtilService)
+	EventsController := controllers.NewEventsController(EventsService)
 	GoogleCalendarRepository := mysql_client.NewGoogleCalendarConfigsRepository(db)
 	GoogleCalendarService := services.NewGoogleCalendarService(GoogleCalendarRepository, *AssistantService, EventsService)
-	WhatsappService := services.NewWhatsappService(UsersService, LogsService, OpenAIAssistantClient, UtilService, NumberPhonesService, MessageRepository, AssistantService, ConfigurationService, GoogleCalendarService, OauthConfig, EventsService)
+	ThreadRepository := mysql_client.NewThreadRepository(db)
+	ThreadService := services.NewThreadService(ThreadRepository, OpenAIAssistantClient)
+	WhatsappService := services.NewWhatsappService(UsersService, LogsService, OpenAIAssistantClient, UtilService, NumberPhonesService, MessageRepository, AssistantService, ConfigurationService, GoogleCalendarService, OauthConfig, EventsService, ThreadService)
 	WhatsappController := controllers.NewWhatsappController(WhatsappService)
 	BussinessRepository := mysql_client.NewBussinessRepository(db)
 	BussinessService := services.NewBussinessService(BussinessRepository)
@@ -150,7 +153,7 @@ func main() {
 	app.Use(meddlewares.SecureHeadersMiddleware())
 
 	// Configuración de TODAS las rutas
-	routes.Setup(app, &meddlewares, AuthController, FileController, AssistantController, BussinessController, UsersController, LogsController, Password_resetsController, RolesController, PermissionsController, WhatsappController, NumberPhonesController, TelegramController, OauthConfig, GoogleCalendarService, MessageController, ContactController, ContactService)
+	routes.Setup(app, &meddlewares, AuthController, FileController, AssistantController, BussinessController, UsersController, LogsController, Password_resetsController, RolesController, PermissionsController, WhatsappController, NumberPhonesController, TelegramController, OauthConfig, GoogleCalendarService, MessageController, ContactController, ContactService, EventsController)
 
 	log.Fatal(app.Listen(":" + os.Getenv("APP_PORT")))
 }

@@ -40,9 +40,10 @@ type WhatsappService struct {
 	googleCalendarService  *GoogleCalendarService
 	oauthConfig            *oauth2.Config
 	eventsService          EventsService
+	threadService          *ThreadService
 }
 
-func NewWhatsappService(usersService *UsersService, logsService *LogsService, openAIAssistantService *OpenAIAssistantService, utilService *UtilService, numberPhone *NumberPhonesService, messagesRepository *mysql_client.MessagesRepository, assistantService *AssistantService, configurationService *ConfigurationsService, googleCalendarService *GoogleCalendarService, oauthConfig *oauth2.Config, eventsService EventsService) *WhatsappService {
+func NewWhatsappService(usersService *UsersService, logsService *LogsService, openAIAssistantService *OpenAIAssistantService, utilService *UtilService, numberPhone *NumberPhonesService, messagesRepository *mysql_client.MessagesRepository, assistantService *AssistantService, configurationService *ConfigurationsService, googleCalendarService *GoogleCalendarService, oauthConfig *oauth2.Config, eventsService EventsService, threadService *ThreadService) *WhatsappService {
 	return &WhatsappService{
 		usersService:           usersService,
 		logsService:            logsService,
@@ -56,6 +57,7 @@ func NewWhatsappService(usersService *UsersService, logsService *LogsService, op
 		googleCalendarService:  googleCalendarService,
 		oauthConfig:            oauthConfig,
 		eventsService:          eventsService,
+		threadService:          threadService,
 	}
 }
 
@@ -158,34 +160,27 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 	}
 
 	// Crear o usar el Thread existente
-	threadID := contact.OpenaiThreadsID
-	if threadID == "" {
-		threadID, err = service.createNewThread(assistant)
+	thread, err := service.threadService.GetOrCreateThread(entities.MapEntityToContactDto(*contact), assistant)
+	if err != nil {
+		return fmt.Errorf("error obteniendo o creando thread: %v", err)
+	}
+
+	// Obtengo el vector_store que usa el assistant
+	files, err := service.assistantService.serviceFile.GetFileByAssistantID(assistant.ID)
+	if err != nil {
+		return fmt.Errorf("error GetFileByAssistantID: %v", err)
+	}
+
+	var fileAssistant dtos.FileDto
+	if len(files) > 0 {
+		fileAssistant = files[len(files)-1]
+		// Asigno el archivo al hilo.
+		err = service.openAIAssistantService.EjecutarThread(thread.ThreadsId, []string{fileAssistant.OpenaiVectorStoreIDs})
 		if err != nil {
-			return fmt.Errorf("error creating new thread: %v", err)
+			return fmt.Errorf("error EjecutarThread: %v", err)
 		}
-
-		contact.NumberPhonesID = numberPhone.ID
-		contact.OpenaiThreadsID = threadID
-		config.DB.Save(contact)
-		// Obtengo el vector_store que usa el assistant
-		files, err := service.assistantService.serviceFile.GetFileByAssistantID(assistant.ID)
-		if err != nil {
-			return fmt.Errorf("error GetFileByAssistantID: %v", err)
-		}
-
-		var vectorStoreID dtos.FileDto
-		if len(files) > 0 {
-			vectorStoreID = files[len(files)-1]
-			// Asigno el archivo al hilo.
-			err = service.openAIAssistantService.EjecutarThread(threadID, []string{vectorStoreID.OpenaiVectorStoreIDs})
-			if err != nil {
-				return fmt.Errorf("error EjecutarThread: %v", err)
-			}
-		} else {
-			fmt.Println("Assistant sin file")
-		}
-
+	} else {
+		fmt.Println("Assistant sin file")
 	}
 
 	// Guardar el mensaje del contacto en la base de datos
@@ -239,7 +234,7 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 	text += fmt.Sprintf("\n\nFecha y hora actual en Argentina: %s\n%s\n%s", formattedTime, availableDaysText, workingHoursText)
 
 	// Enviar el mensaje a OpenAI
-	response, err := service.InteractWithAssistant(threadID, assistant.OpenaiAssistantsID, text)
+	response, err := service.InteractWithAssistant(thread.ThreadsId, assistant.OpenaiAssistantsID, text)
 	if err != nil {
 		return fmt.Errorf("error sending message to OpenAI: %v", err)
 	}
@@ -920,15 +915,6 @@ func (s *WhatsappService) SendWhatsappNotification(numberPhone entities.NumberPh
 		return fmt.Errorf("error sending response to user: %v", err)
 	}
 	return nil
-}
-
-func (service *WhatsappService) createNewThread(assistant dtos.AssistantDto) (string, error) {
-	// Crear un nuevo Thread en OpenAI
-	threadID, err := service.openAIAssistantService.CreateThread(assistant.Model, assistant.Instructions)
-	if err != nil {
-		return "", fmt.Errorf("error creating thread: %v", err)
-	}
-	return threadID, nil
 }
 
 func (service *WhatsappService) sendMessageBasic(message metaapi.SendMessageBasic, phoneNumberId string, tokenApiWhatsapp string) error {

@@ -26,7 +26,8 @@ func Setup(app *fiber.App,
 	GoogleCalendarService *services.GoogleCalendarService,
 	MessageController *controllers.MessagesController,
 	ContactController *controllers.ContactsController,
-	ContactService *services.ContactsService) {
+	ContactService *services.ContactsService,
+	EventController *controllers.EventsController) {
 
 	app.Get("/", middleware.ValidarApikey(), func(c *fiber.Ctx) error {
 		return c.Send([]byte("Api chatbot whatsapp by OVNICORE  ®️ "))
@@ -130,5 +131,13 @@ func Setup(app *fiber.App,
 	api.Post("/number-phones", middleware.ValidarApikey(), NumberPhonesController.Create)
 	api.Put("/number-phones/:id", middleware.ValidarApikey(), NumberPhonesController.Update)
 	api.Delete("/number-phones/:id", middleware.ValidarApikey(), NumberPhonesController.Delete)
+
+	api.Post("/events/", middleware.ValidarApikey(), EventController.CreateEvent)                                                             // Crear un evento
+	api.Get("/events/:id", middleware.ValidarApikey(), EventController.GetEventByID)                                                          // Obtener un evento por ID
+	api.Get("/events/", middleware.ValidarApikey(), EventController.GetAllEvents)                                                             // Obtener todos los eventos
+	api.Put("/events/", middleware.ValidarApikey(), EventController.UpdateEvent)                                                              // Actualizar un evento
+	api.Delete("/events/:id", middleware.ValidarApikey(), EventController.DeleteEvent)                                                        // Eliminar un evento por ID
+	api.Delete("/events/cancel/:codeEvent", middleware.ValidarApikey(), EventController.CancelEvent)                                          // Cancelar un evento por código
+	api.Get("/events/contact/:contactID/date/:date/time/:currentTime", middleware.ValidarApikey(), EventController.GetEventsByContactAndDate) // Obtener eventos por contacto y fecha
 
 }

@@ -15,6 +15,7 @@ type Contact struct {
 	OpenaiThreadsID   string
 	CountTokens       string
 	Events            []Events `gorm:"foreignKey:ContactsID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"` // Relación con Events
+	Threads           []Thread `gorm:"foreignKey:ContactsID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"` // Relación de uno a muchos con Thread
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
 	DeletedAt         gorm.DeletedAt `gorm:"index"`
