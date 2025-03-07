@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos"
 	googlecalendar "github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos/googleCalendar"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/repositories/mysql_client"
@@ -56,7 +55,7 @@ func (s *GoogleCalendarService) SaveCredentials(assistantID int, token *oauth2.T
 		}
 
 		// Actualizo el campo google calendar al assistant
-		if _, err := s.AssistantService.UpdateAssistant(int64(assistantID), dtos.AssistantDto{AccountGoogle: true}); err != nil {
+		if err := s.AssistantService.repository.Update(int64(assistantID), entities.Assistant{AccountGoogle: true}); err != nil {
 			return err
 		}
 
@@ -77,7 +76,7 @@ func (s *GoogleCalendarService) SaveCredentials(assistantID int, token *oauth2.T
 	}
 
 	// Actualizo el campo google calendar al assistant
-	if _, err := s.AssistantService.UpdateAssistant(int64(assistantID), dtos.AssistantDto{AccountGoogle: true}); err != nil {
+	if err := s.AssistantService.repository.Update(int64(assistantID), entities.Assistant{AccountGoogle: true}); err != nil {
 		return err
 	}
 
