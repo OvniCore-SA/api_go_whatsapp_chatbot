@@ -112,6 +112,13 @@ func (controller *UsersController) Update(c *fiber.Ctx) error {
 		})
 	}
 
+	if _, err := controller.service.GetById(dto.ID); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": err.Error(),
+		})
+	}
+
 	err = controller.service.Update(int64(id), dto)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{

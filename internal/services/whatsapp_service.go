@@ -2,6 +2,7 @@ package services
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/config"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos"
+	googlecalendar "github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos/googleCalendar"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos/openaiassistantdtos"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos/openaiassistantdtos/openairuns"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos/whatsapp"
@@ -25,6 +27,7 @@ import (
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/repositories/mysql_client"
 	"golang.org/x/exp/rand"
 	"golang.org/x/oauth2"
+	"google.golang.org/api/calendar/v3"
 )
 
 type WhatsappService struct {
@@ -428,6 +431,32 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 		}
 
 		// Creo el evento en la base de datos
+
+		context := context.Background()
+		token, err := service.googleCalendarService.GetOrRefreshToken(int(assistant.ID), service.oauthConfig, context)
+		if err != nil {
+			return err
+		}
+
+		// Crear el evento
+		event := &calendar.Event{
+			Summary:     assistant.EventType + " - " + eventDTO.Summary,
+			Description: assistantResp.UserData.UserName + ", " + assistantResp.UserData.UserEmail,
+			Start: &calendar.EventDateTime{
+				DateTime: assistantResp.UserData.MeetingDate,
+				TimeZone: "UTC-3",
+			},
+			End: &calendar.EventDateTime{
+				DateTime: endDateStr,
+				TimeZone: "UTC-3",
+			},
+		}
+		eventGoogleCalendar, err := service.googleCalendarService.CreateGoogleCalendarEvent(token, context, event)
+		if err != nil {
+			log.Println("Error al crear evento en google calendar. " + err.Error())
+		}
+
+		eventDTO.EventGoogleCalendarID = eventGoogleCalendar.Id
 		err = service.eventsService.Create(eventDTO)
 		if err != nil {
 			log.Printf("\nCreate(eventDTO): %s", err.Error())
@@ -520,6 +549,25 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 			return err
 		}
 
+		context := context.Background()
+		token, err := service.googleCalendarService.GetOrRefreshToken(int(assistant.ID), service.oauthConfig, context)
+		if err != nil {
+			return err
+		}
+
+		// Crear el evento
+		event := &googlecalendar.EventRequest{
+			Summary:     eventDTO.Summary,
+			Description: assistantResp.UserData.UserName + ", " + assistantResp.UserData.UserEmail,
+			Start:       eventDTO.StartDate,
+			End:         eventDTO.StartDate,
+			ContactsID:  uint(contact.ID),
+		}
+
+		if _, err := service.googleCalendarService.UpdateGoogleCalendarEvent(token, context, eventDTO.EventGoogleCalendarID, event); err != nil {
+			log.Println("Error al crear evento en google calendar. " + err.Error())
+		}
+
 		responseUser = "✅ Su reunion ha sido modificada con éxito. Si nesesitas cualquier otra cosa, estoy acá para ayudarte 😊"
 
 		// Notificar al cliente
@@ -533,16 +581,28 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 		}
 
 	case "deleteEvent":
+		event, err := service.eventsService.GetEventByCodeEvent(contact.ID, assistantResp.UserData.EventCode)
+		if err != nil {
+			fmt.Println(err.Error())
+			responseUser = fmt.Sprint("Lo siento, ocurrió un error al eliminar reunion.\n Podrías intentar mas tarde o simplemente modificar tu reunión. \nSi nesesitas cualquier otra cosa, estoy acá para ayudarte 😊")
+		}
+
 		err = service.eventsService.Cancel(assistantResp.UserData.EventCode)
 		if err != nil {
 			return err
 		}
-		responseUser = fmt.Sprint("✅ Su turno con el código '%s' ha sido cancelado con éxito. Si nesesitas cualquier otra cosa, estoy acá para ayudarte 😊", assistantResp.UserData.EventCode)
+		responseUser = fmt.Sprintf("✅ Su turno con el código '%s' ha sido cancelado con éxito. Si nesesitas cualquier otra cosa, estoy acá para ayudarte 😊", assistantResp.UserData.EventCode)
 
-		event, err := service.eventsService.GetEventByCodeEvent(contact.ID, assistantResp.UserData.EventCode)
+		context := context.Background()
+		token, err := service.googleCalendarService.GetOrRefreshToken(int(assistant.ID), service.oauthConfig, context)
 		if err != nil {
 			return err
 		}
+
+		if err := service.googleCalendarService.DeleteGoogleCalendarEvent(token, context, event.EventGoogleCalendarID); err != nil {
+			log.Println("no se pudo eliminar el evento de google: " + err.Error())
+		}
+
 		// // Notificar al cliente
 		// //  Enviar la notificacion al cliente de que un usuario registró un turno o reunion
 		contactToString := strconv.Itoa(int(numberPhone.NumberPhoneToNotify))
