@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos"
 	googlecalendar "github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos/googleCalendar"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/repositories/mysql_client"
@@ -61,7 +62,17 @@ func (s *GoogleCalendarService) SaveCredentials(assistantID int, token *oauth2.T
 		RefreshToken: token.RefreshToken,
 		TokenExpiry:  token.Expiry,
 	}
-	return s.repository.Create(newCredential)
+
+	if err := s.repository.Create(newCredential); err != nil {
+		return err
+	}
+
+	// Actualizo el campo google calendar al assistant
+	if _, err := s.AssistantService.UpdateAssistant(int64(assistantID), dtos.AssistantDto{AccountGoogle: true}); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // DeleteCredentials removes Google Calendar credentials for an assistant

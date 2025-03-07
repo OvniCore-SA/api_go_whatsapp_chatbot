@@ -143,6 +143,14 @@ func (m *AssistantService) CreateAssistantWithFile(data dtos.AssistantDto, fileH
 }
 
 func (s *AssistantService) CreateAssistant(data dtos.AssistantDto) (dtos.AssistantDto, error) {
+	// Crear el asistente en OpenAI
+	assistantID, err := s.openAIAssistantService.CreateAssistant(data.Name, data.Instructions, data.Model, "")
+	if err != nil {
+		return dtos.AssistantDto{}, err
+	}
+
+	data.OpenaiAssistantsID = assistantID
+
 	assistant := entities.MapDtoToAssistant(data)
 	if err := s.repository.Create(&assistant); err != nil {
 		return dtos.AssistantDto{}, err

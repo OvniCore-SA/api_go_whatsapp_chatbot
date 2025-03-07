@@ -83,18 +83,24 @@ func maskAPIKey(apiKey string) string {
 
 // CreateAssistant crea un nuevo asistente con búsqueda de archivos activada
 func (s *OpenAIAssistantService) CreateAssistant(name, instructions, model, vectorStoreID string) (string, error) {
+	// Definir el payload para crear el asistente
 	data := map[string]interface{}{
 		"instructions": instructions,
 		"name":         name,
-		"tools": []map[string]string{
-			{"type": "file_search"},
-		},
-		"tool_resources": map[string]interface{}{
-			"file_search": map[string]interface{}{
-				"vector_store_ids": []string{vectorStoreID},
+		"model":        model,
+		"tools": []map[string]interface{}{
+			{
+				"type": "function",
+				"function": map[string]interface{}{
+					"name": "default_function",
+				},
 			},
 		},
-		"model": model,
+	}
+
+	// Si se proporciona un vectorStoreID, agregarlo al payload
+	if vectorStoreID != "" {
+		data["vector_store_id"] = vectorStoreID
 	}
 
 	body, _ := json.Marshal(data)
