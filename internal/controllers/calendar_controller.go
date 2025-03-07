@@ -450,18 +450,6 @@ func SaveOrUpdateAuthToken(config *oauth2.Config, googleCalendarService *service
 		code := c.Query("code")
 		state := c.Query("state")
 
-		if code == "" {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"error": "El parámetro 'code' es obligatorio",
-			})
-		}
-
-		if state == "" {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"error": "El parámetro 'state' es obligatorio",
-			})
-		}
-
 		// Procesar el estado para extraer los parámetros adicionales
 		params := make(map[string]string)
 		for _, param := range strings.Split(state, "&") {
@@ -478,6 +466,18 @@ func SaveOrUpdateAuthToken(config *oauth2.Config, googleCalendarService *service
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 				"error": "No se encontraron los parámetros 'assistant_id' y 'redirect_url' en el estado",
 			})
+		}
+
+		if code == "" {
+			fmt.Print("El parámetro 'code' es obligatorio")
+			// Redirigir al usuario a la URL proporcionada con los parámetros adicionales
+			return c.Redirect(fmt.Sprintf("%s?status=success", redirectURL))
+		}
+
+		if state == "" {
+			fmt.Print("El parámetro 'state' es obligatorio")
+
+			return c.Redirect(fmt.Sprintf("%s?status=success", redirectURL))
 		}
 
 		// Intercambiar el código por un token

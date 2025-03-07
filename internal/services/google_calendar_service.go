@@ -51,7 +51,16 @@ func (s *GoogleCalendarService) SaveCredentials(assistantID int, token *oauth2.T
 		existingCredential.RefreshToken = token.RefreshToken
 		existingCredential.TokenExpiry = token.Expiry
 		existingCredential.GoogleUserID = googleUserID
-		return s.repository.Update(existingCredential)
+		if err := s.repository.Update(existingCredential); err != nil {
+			return err
+		}
+
+		// Actualizo el campo google calendar al assistant
+		if _, err := s.AssistantService.UpdateAssistant(int64(assistantID), dtos.AssistantDto{AccountGoogle: true}); err != nil {
+			return err
+		}
+
+		return nil
 	}
 
 	// Crear nuevas credenciales
