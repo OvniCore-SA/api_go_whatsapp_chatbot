@@ -118,13 +118,13 @@ func (r *eventsRepositoryImpl) Create(event *entities.Events) error {
 
 func (r *eventsRepositoryImpl) FindByID(id int) (*entities.Events, error) {
 	var event entities.Events
-	err := r.db.Preload("GoogleCalendarConfig").Preload("Contact").First(&event, id).Error
+	err := r.db.Preload("Contact").First(&event, id).Error
 	return &event, err
 }
 
 func (r *eventsRepositoryImpl) FindAll() ([]entities.Events, error) {
 	var events []entities.Events
-	err := r.db.Preload("GoogleCalendarConfig").Preload("Contact").Find(&events).Error
+	err := r.db.Preload("Contact").Find(&events).Error
 	return events, err
 }
 

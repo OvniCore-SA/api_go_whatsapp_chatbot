@@ -54,7 +54,7 @@ func (ec *EventsController) GetAllEvents(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error retrieving events"})
 	}
 
-	return c.JSON(events)
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{"data": events, "message": "Events retrieved successfully", "status": true})
 }
 
 // Actualizar un evento
@@ -68,7 +68,7 @@ func (ec *EventsController) UpdateEvent(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	return c.JSON(fiber.Map{"message": "Event updated successfully"})
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{"data": eventDTO.ID, "message": "Event updated successfully", "status": true})
 }
 
 // Eliminar un evento por ID
@@ -82,7 +82,7 @@ func (ec *EventsController) DeleteEvent(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	return c.JSON(fiber.Map{"message": "Event deleted successfully"})
+	return c.JSON(fiber.Map{"data": id, "message": "Event deleted successfully", "status": true})
 }
 
 // Cancelar un evento por código
@@ -93,7 +93,7 @@ func (ec *EventsController) CancelEvent(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	return c.JSON(fiber.Map{"message": "Event canceled successfully"})
+	return c.JSON(fiber.Map{"data": codeEvent, "message": "Event canceled successfully", "status": true})
 }
 
 // Obtener eventos por contacto y fecha
