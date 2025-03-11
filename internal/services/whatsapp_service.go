@@ -178,7 +178,7 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 	if len(files) > 0 {
 		fileAssistant = files[len(files)-1]
 		// Asigno el archivo al hilo.
-		err = service.openAIAssistantService.EjecutarThread(thread.ThreadsId, []string{fileAssistant.OpenaiVectorStoreIDs})
+		err = service.openAIAssistantService.EjecutarThread(thread.OpenaiThreadsId, []string{fileAssistant.OpenaiVectorStoreIDs})
 		if err != nil {
 			return fmt.Errorf("error EjecutarThread: %v", err)
 		}
@@ -237,7 +237,7 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 	text += fmt.Sprintf("\n\nFecha y hora actual en Argentina: %s\n%s\n%s", formattedTime, availableDaysText, workingHoursText)
 
 	// Enviar el mensaje a OpenAI
-	response, err := service.InteractWithAssistant(thread.ThreadsId, assistant.OpenaiAssistantsID, text)
+	response, err := service.InteractWithAssistant(thread.OpenaiThreadsId, assistant.OpenaiAssistantsID, text)
 	if err != nil {
 		return fmt.Errorf("error sending message to OpenAI: %v", err)
 	}

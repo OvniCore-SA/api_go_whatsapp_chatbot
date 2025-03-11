@@ -45,10 +45,10 @@ func (s *ThreadService) GetOrCreateThread(contact dtos.ContactDto, assistant dto
 
 	// Crear el nuevo Thread en la base de datos
 	newThread := entities.Thread{
-		ThreadsId:  newThreadID,
-		ContactsID: contact.ID,
-		Active:     true,
-		CreatedAt:  time.Now(),
+		OpenaiThreadsId: newThreadID,
+		ContactsID:      contact.ID,
+		Active:          true,
+		CreatedAt:       time.Now(),
 	}
 
 	createdThread, err := s.threadRepo.Create(newThread)

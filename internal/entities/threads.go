@@ -7,10 +7,10 @@ import (
 )
 
 type Thread struct {
-	ID         int64  `gorm:"primaryKey;autoIncrement"` // ID como clave primaria
-	ThreadsId  string `gorm:"not null;unique"`
-	Active     bool   `gorm:"not null"`
-	ContactsID int64  `gorm:"not null"` // FK a Contact
+	ID              int64  `gorm:"primaryKey;autoIncrement"` // ID como clave primaria
+	OpenaiThreadsId string `gorm:"not null;unique"`
+	Active          bool   `gorm:"not null"`
+	ContactsID      int64  `gorm:"not null"` // FK a Contact
 
 	Contact   Contact `gorm:"foreignKey:ContactsID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"` // Relación con Contact
 	CreatedAt time.Time
