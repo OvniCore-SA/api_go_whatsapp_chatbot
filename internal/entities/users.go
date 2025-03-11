@@ -16,6 +16,7 @@ type Users struct {
 	Activo         bool
 	Telefono       string
 	CuilCuit       string
+	Bussiness      []Bussines       `gorm:"many2many:bussiness_has_users;"` // Relación muchos a muchos
 	RolesID        int64            `gorm:"foreignKey:RolesID"`
 	Rol            Roles            `gorm:"foreignKey:RolesID"`
 	PasswordResets []PasswordResets `gorm:"foreignKey:UsersID"` // Relación de uno a muchos con PasswordResets

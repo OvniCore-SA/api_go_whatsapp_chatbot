@@ -8,6 +8,8 @@ import (
 
 type UsersDto struct {
 	ID            int64
+	BussinesID    int64          `json:"bussines_id"`
+	Bussines      []BussinessDto `json:"bussines"`
 	Name          string
 	Email         string
 	Password      string

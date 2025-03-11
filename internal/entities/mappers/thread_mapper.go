@@ -8,16 +8,19 @@ import (
 // Convertir de DTO a entidad
 func ToThreadEntity(dto dtos.ThreadCreateRequest) entities.Thread {
 	return entities.Thread{
-		Active: dto.Active,
+		Active:          dto.Active,
+		OpenaiThreadsId: dto.OpenaiThreadsId,
+		ContactsID:      dto.ContactsID,
 	}
 }
 
 // Convertir de entidad a DTO de respuesta
 func ToThreadResponse(entity entities.Thread) dtos.ThreadResponse {
 	return dtos.ThreadResponse{
-		ID: entity.ID,
-
-		Active: entity.Active,
+		ID:              entity.ID,
+		OpenaiThreadsId: entity.OpenaiThreadsId,
+		ContactsID:      entity.ContactsID,
+		Active:          entity.Active,
 	}
 }
 

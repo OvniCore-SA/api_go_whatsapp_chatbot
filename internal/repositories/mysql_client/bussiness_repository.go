@@ -44,16 +44,36 @@ func (r *BussinessRepository) Delete(id int64) error {
 // List retrieves all bussiness records
 func (r *BussinessRepository) List() ([]entities.Bussines, error) {
 	var records []entities.Bussines
-	err := r.db.Find(&records).Error
+	err := r.db.Preload("Users").Find(&records).Error
 	return records, err
 }
 
-// FindByUserId retrieves all bussiness records associated with a specific user ID
+// FindByUserId retrieves all businesses associated with a specific user ID
 func (r *BussinessRepository) FindByUserId(userId int64) ([]entities.Bussines, error) {
-	var records []entities.Bussines
-	err := r.db.Where("users_id = ?", userId).
-		Preload("Assistants"). // Carga anticipada de asistentes, si es necesario
-		Find(&records).Error
+	var businesses []entities.Bussines
 
-	return records, err
+	err := r.db.Joins("JOIN bussiness_has_users ON bussiness_has_users.bussiness_id = bussiness.id").
+		Where("bussiness_has_users.users_id = ?", userId).
+		Find(&businesses).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return businesses, nil
+}
+
+// AddUserToBussiness associates a user with a business in the many-to-many table
+func (r *BussinessRepository) AddUserToBussiness(businessID, userID int64) error {
+	association := entities.BussinessHasUsers{
+		BussinessID: businessID,
+		UsersID:     userID,
+	}
+	return r.db.Create(&association).Error
+}
+
+// RemoveUserFromBussiness removes the association between a user and a business
+func (r *BussinessRepository) RemoveUserFromBussiness(businessID, userID int64) error {
+	return r.db.Where("bussiness_id = ? AND users_id = ?", businessID, userID).
+		Delete(&entities.BussinessHasUsers{}).Error
 }

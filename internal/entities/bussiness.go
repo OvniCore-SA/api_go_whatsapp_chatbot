@@ -8,15 +8,13 @@ import (
 )
 
 type Bussines struct {
-	ID       int64  `gorm:"primaryKey;autoIncrement"`                                         // ID como clave primaria
-	UsersID  int64  `gorm:"not null"`                                                         // Relación con la entidad Users
-	User     Users  `gorm:"foreignKey:UsersID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"` // Relación con Users
-	Name     string `gorm:"not null"`
-	Address  string `gorm:"not null"`
-	CuilCuit string
-	WebSite  string
-
-	Assistants []Assistant `gorm:"foreignKey:BussinessID"` // Relación de uno a muchos con Assistant
+	ID         int64  `gorm:"primaryKey;autoIncrement"` // ID como clave primaria
+	Name       string `gorm:"not null"`
+	Address    string `gorm:"not null"`
+	CuilCuit   string
+	WebSite    string
+	Users      []Users     `gorm:"many2many:bussiness_has_users;"` // Relación muchos a muchos
+	Assistants []Assistant `gorm:"foreignKey:BussinessID"`         // Relación de uno a muchos con Assistant
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
 	DeletedAt  gorm.DeletedAt `gorm:"index"` // Soft delete
@@ -42,12 +40,29 @@ func MapEntitiesToBussinessDto(record Bussines) dtos.BussinessDto {
 		})
 	}
 
+	usersDto := []dtos.UsersDto{}
+	for _, u := range record.Users {
+		usersDto = append(usersDto, dtos.UsersDto{
+			ID:            u.ID,
+			Name:          u.Name,
+			Email:         u.Email,
+			Password:      u.Password,
+			CuilCuit:      u.CuilCuit,
+			Activo:        u.Activo,
+			RememberToken: u.RememberToken,
+			RolesID:       u.RolesID,
+			Telefono:      u.Telefono,
+			CreatedAt:     u.CreatedAt.String(),
+			UpdatedAt:     u.UpdatedAt.String(),
+		})
+	}
+
 	return dtos.BussinessDto{
 		ID:         record.ID,
-		UsersID:    record.UsersID,
 		Name:       record.Name,
 		Address:    record.Address,
 		CuilCuit:   record.CuilCuit,
+		Users:      usersDto,
 		WebSite:    record.WebSite,
 		Assistants: assistants,
 		CreatedAt:  record.CreatedAt,
@@ -72,7 +87,6 @@ func MapDtoToBussiness(dto dtos.BussinessDto) Bussines {
 
 	return Bussines{
 		ID:         dto.ID,
-		UsersID:    dto.UsersID,
 		Name:       dto.Name,
 		Address:    dto.Address,
 		CuilCuit:   dto.CuilCuit,
