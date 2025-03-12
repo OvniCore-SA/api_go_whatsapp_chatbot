@@ -9,6 +9,7 @@ import (
 
 // EventsDto representa la estructura de un evento con validaciones
 type EventsDto struct {
+	Pagination
 	ID                    int    `json:"id"`
 	Summary               string `json:"summary" validate:"required,min=3,max=255"`
 	Description           string `json:"description" validate:"required,min=5,max=500"`

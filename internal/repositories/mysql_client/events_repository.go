@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities"
 	"gorm.io/gorm"
 )
@@ -12,7 +13,7 @@ import (
 type EventsRepository interface {
 	Create(event *entities.Events) error
 	FindByID(id int) (*entities.Events, error)
-	FindAll() ([]entities.Events, error)
+	FindAll(request *dtos.EventsDto) (events []entities.Events, total int64, err error)
 	Update(event *entities.Events) error
 	Delete(id int) error
 	Cancel(codeEvent string) error
@@ -122,10 +123,25 @@ func (r *eventsRepositoryImpl) FindByID(id int) (*entities.Events, error) {
 	return &event, err
 }
 
-func (r *eventsRepositoryImpl) FindAll() ([]entities.Events, error) {
-	var events []entities.Events
-	err := r.db.Preload("Contact").Find(&events).Error
-	return events, err
+func (r *eventsRepositoryImpl) FindAll(request *dtos.EventsDto) (events []entities.Events, total int64, err error) {
+	query := r.db.Model(&entities.Events{}).Preload("Contact")
+
+	// Obtener total sin paginación
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// Aplicar paginación si corresponde
+	if request.Number > 0 && request.Size > 0 {
+		offset := int((request.Number - 1) * request.Size)
+		query = query.Offset(offset).Limit(int(request.Size))
+	}
+
+	if err := query.Order("start_date DESC").Find(&events).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return events, total, nil
 }
 
 func (r *eventsRepositoryImpl) Update(event *entities.Events) error {

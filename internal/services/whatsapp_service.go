@@ -451,13 +451,29 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 					DateTime: endDateStr,
 					TimeZone: "UTC-3",
 				},
+				Attendees: []*calendar.EventAttendee{
+					{Email: assistantResp.UserData.UserEmail},
+				},
+				ConferenceData: &calendar.ConferenceData{
+					CreateRequest: &calendar.CreateConferenceRequest{
+						RequestId: fmt.Sprintf("meet-%d", time.Now().Unix()), // ID único
+						ConferenceSolutionKey: &calendar.ConferenceSolutionKey{
+							Type: "hangoutsMeet",
+						},
+					},
+				},
 			}
 			eventGoogleCalendar, err := service.googleCalendarService.CreateGoogleCalendarEvent(token, context, event)
 			if err != nil {
 				log.Println("Error al crear evento en google calendar. " + err.Error())
 			}
 
-			eventDTO.EventGoogleCalendarID = eventGoogleCalendar.Id
+			if eventGoogleCalendar != nil {
+				eventDTO.EventGoogleCalendarID = eventGoogleCalendar.Id
+			} else {
+				eventDTO.EventGoogleCalendarID = "eventGoogleCalendar_default"
+			}
+
 		}
 
 		err = service.eventsService.Create(eventDTO)

@@ -49,12 +49,33 @@ func (ec *EventsController) GetEventByID(c *fiber.Ctx) error {
 
 // Obtener todos los eventos
 func (ec *EventsController) GetAllEvents(c *fiber.Ctx) error {
-	events, err := ec.eventsService.GetAll()
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error retrieving events"})
+	request := new(dtos.EventsDto)
+
+	if err := c.QueryParser(request); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  false,
+			"message": "Error parsing pagination parameters",
+			"error":   err.Error(),
+		})
 	}
 
-	return c.Status(fiber.StatusOK).JSON(fiber.Map{"data": events, "message": "Events retrieved successfully", "status": true})
+	request.Pagination.SetDefaults()
+
+	events, paginacion, err := ec.eventsService.GetAll(request)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  false,
+			"message": "Error retrieving events",
+			"error":   err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":     true,
+		"message":    "Events retrieved successfully",
+		"data":       events,
+		"pagination": paginacion,
+	})
 }
 
 // Actualizar un evento

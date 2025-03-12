@@ -146,6 +146,17 @@ func AddCalendarEvent(service *services.GoogleCalendarService, config *oauth2.Co
 					DateTime: eventRequest.End,
 					TimeZone: "UTC-3",
 				},
+				Attendees: []*calendar.EventAttendee{
+					{Email: "emanuel.pasante@gmail.com"},
+				},
+				ConferenceData: &calendar.ConferenceData{
+					CreateRequest: &calendar.CreateConferenceRequest{
+						RequestId: fmt.Sprintf("meet-%d", time.Now().Unix()), // ID único
+						ConferenceSolutionKey: &calendar.ConferenceSolutionKey{
+							Type: "hangoutsMeet",
+						},
+					},
+				},
 			}
 
 			createdEvent, err = service.CreateGoogleCalendarEvent(token, c.Context(), event)
@@ -490,7 +501,7 @@ func SaveOrUpdateAuthToken(config *oauth2.Config, googleCalendarService *service
 		fmt.Println("AccessToken GOOGLE: " + token.AccessToken)
 		// Obtener información del usuario con el token
 		client := config.Client(c.Context(), token)
-		googleUserID, err := services.GetGoogleUserID(client, token)
+		googleUserID, googleUserEmail, err := services.GetGoogleUserID(client, token)
 		if err != nil {
 			log.Println(err)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -500,7 +511,7 @@ func SaveOrUpdateAuthToken(config *oauth2.Config, googleCalendarService *service
 
 		// Guardar las credenciales
 		assistantIDInt, _ := strconv.Atoi(assistantID)
-		err = googleCalendarService.SaveCredentials(assistantIDInt, token, googleUserID)
+		err = googleCalendarService.SaveCredentials(assistantIDInt, token, googleUserID, googleUserEmail)
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": "No se pudieron guardar las credenciales",

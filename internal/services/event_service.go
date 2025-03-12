@@ -15,7 +15,7 @@ import (
 type EventsService interface {
 	Create(eventDTO dtos.EventsDto) error
 	GetByID(id int) (*dtos.EventsDto, error)
-	GetAll() ([]dtos.EventsDto, error)
+	GetAll(request *dtos.EventsDto) ([]dtos.EventsDto, dtos.EventsDto, error)
 	Update(eventDTO dtos.EventsDto) error
 	Delete(id int) error
 	Cancel(codeEvent string) error
@@ -124,19 +124,25 @@ func (s *eventsServiceImpl) GetByID(id int) (*dtos.EventsDto, error) {
 }
 
 // Obtener todos los eventos y devolver DTOs
-func (s *eventsServiceImpl) GetAll() ([]dtos.EventsDto, error) {
-	events, err := s.repo.FindAll()
+func (s *eventsServiceImpl) GetAll(request *dtos.EventsDto) ([]dtos.EventsDto, dtos.EventsDto, error) {
+	events, total, err := s.repo.FindAll(request)
 	if err != nil {
-		return nil, err
+		return nil, dtos.EventsDto{}, err
 	}
 
-	// Convertir lista de entidades a lista de DTOs
+	// Convertir entidades a DTOs
 	var eventsDTOs []dtos.EventsDto
 	for _, event := range events {
 		eventsDTOs = append(eventsDTOs, entities.MapEntityToEventsDto(event))
 	}
 
-	return eventsDTOs, nil
+	// Actualizar la paginación con la información total
+	request.Total = total
+	request.LastPage = uint32((total + int64(request.Size) - 1) / int64(request.Size))
+	request.From = (request.Number-1)*request.Size + 1
+	request.To = request.From + uint32(len(eventsDTOs)) - 1
+
+	return eventsDTOs, *request, nil
 }
 
 // Actualizar un evento desde un DTO

@@ -8,6 +8,7 @@ type GoogleCalendarCredential struct {
 	GoogleUserID string    `gorm:"not null"`
 	AccessToken  string    `gorm:"type:text;not null"`
 	RefreshToken string    `gorm:"type:text;not null"`
+	Email        string    `gorm:"type:text;null"`
 	TokenExpiry  time.Time `gorm:"not null"`
 
 	CreatedAt time.Time `gorm:"autoCreateTime"`

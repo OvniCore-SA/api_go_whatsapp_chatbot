@@ -58,7 +58,7 @@ func Setup(app *fiber.App,
 	api.Post("/reset-password", AuthController.ResetPassword)
 
 	// Rutas de autenticación
-	app.Get("/auth/url", middleware.ValidarPermiso("assistants.create"), controllers.GetAuthURL(OauthConfig))
+	app.Get("/auth/url", middleware.ValidarPermiso("assistants.google_account"), controllers.GetAuthURL(OauthConfig))
 	app.Get("/auth/callback-auth", controllers.SaveOrUpdateAuthToken(OauthConfig, GoogleCalendarService))
 	app.Get("/demo-redirect-url-post-auth", middleware.ValidarPermiso("assistants.create"), controllers.GetRequestDetails())
 

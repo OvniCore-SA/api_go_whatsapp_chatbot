@@ -37,7 +37,7 @@ func (s *GoogleCalendarService) GetCredentials(assistantID int) (*entities.Googl
 }
 
 // SaveCredentials guarda las credenciales en la base de datos
-func (s *GoogleCalendarService) SaveCredentials(assistantID int, token *oauth2.Token, googleUserID string) error {
+func (s *GoogleCalendarService) SaveCredentials(assistantID int, token *oauth2.Token, googleUserID, googleUserEmail string) error {
 	// Validar si ya existen credenciales para este asistente
 	existingCredential, err := s.repository.FindByAssistantID(assistantID)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -96,7 +96,13 @@ func (s *GoogleCalendarService) CreateGoogleCalendarEvent(token *oauth2.Token, c
 	}
 
 	// Registrar el evento en el calendario principal
-	createdEvent, err := srv.Events.Insert("primary", event).Do()
+	createdEvent, err := srv.Events.
+		Insert("primary", event).
+		SendNotifications(true).
+		SendUpdates("all").
+		ConferenceDataVersion(1).
+		Do()
+
 	if err != nil {
 		return nil, err
 	}
@@ -157,11 +163,11 @@ func (s *GoogleCalendarService) UpdateGoogleCalendarEvent(token *oauth2.Token, c
 }
 
 // GetGoogleUserID obtiene el ID único del usuario de Google
-func GetGoogleUserID(client *http.Client, token *oauth2.Token) (string, error) {
+func GetGoogleUserID(client *http.Client, token *oauth2.Token) (string, string, error) {
 	// Crear una solicitud HTTP con el token de autenticación
 	req, err := http.NewRequest("GET", "https://www.googleapis.com/oauth2/v1/userinfo?alt=json", nil)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	// Agregar el token de autenticación en el encabezado Authorization
@@ -170,7 +176,7 @@ func GetGoogleUserID(client *http.Client, token *oauth2.Token) (string, error) {
 	// Ejecutar la solicitud
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	defer resp.Body.Close()
 
@@ -184,23 +190,24 @@ func GetGoogleUserID(client *http.Client, token *oauth2.Token) (string, error) {
 		resp, err = client.Do(req)
 		if err != nil {
 			log.Println(resp.StatusCode)
-			return "", err
+			return "", "", err
 		}
 		log.Printf("Segunda consulta: %d", resp.StatusCode)
 
-		return "", errors.New("error al obtener la información del usuario de Google")
+		return "", "", errors.New("error al obtener la información del usuario de Google")
 	}
 
 	// Decodificar la respuesta JSON
 	var result struct {
-		ID string `json:"id"`
+		ID    string `json:"id"`
+		Email string `json:"email"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	// Retornar el ID del usuario
-	return result.ID, nil
+	return result.ID, result.Email, nil
 }
 
 func (s *GoogleCalendarService) FetchGoogleCalendarEventsByDate(token *oauth2.Token, ctx context.Context, startDate, endDate time.Time) (*calendar.Events, error) {
@@ -266,7 +273,7 @@ func (s *GoogleCalendarService) GetOrRefreshToken(assistantID int, config *oauth
 			return nil, err
 		}
 
-		err = s.SaveCredentials(assistantID, newToken, credentials.GoogleUserID)
+		err = s.SaveCredentials(assistantID, newToken, credentials.GoogleUserID, credentials.Email)
 		if err != nil {
 			return nil, err
 		}
