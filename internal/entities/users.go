@@ -31,6 +31,7 @@ func MapEntitiesToUsersDto(record Users) dtos.UsersDto {
 	permissions := []dtos.PermissionsDto{}
 	for _, perm := range record.Rol.Permissions {
 		permissions = append(permissions, dtos.PermissionsDto{
+			ID:          perm.ID,
 			Permission:  perm.Permission,
 			Description: perm.Description,
 		})

@@ -7,22 +7,22 @@ import (
 
 type AssistantDto struct {
 	ID                 int64            `json:"id"`
-	BussinessID        int64            `json:"bussiness_id"`
-	Name               string           `json:"name"`
-	OpenaiAssistantsID string           `json:"openai_assistants_id,omitempty"`
-	Description        string           `json:"description,omitempty"`
-	Model              string           `json:"model,omitempty"`
-	Instructions       string           `json:"instructions,omitempty"`
-	Active             bool             `json:"active"`
-	EventDuration      int64            `json:"event_duration"`
-	AccountGoogle      bool             `json:"account_google"`
-	EventType          string           `json:"event_type"`
-	EventCountPerDay   int16            `json:"event_count_per_day"`
-	Bussiness          BussinessDto     `json:"bussiness,omitempty"`
-	NumberPhones       []NumberPhoneDto `json:"number_phones,omitempty"`
-	Events             []EventsDto      `json:"events,omitempty"`
-	OpeningDays        uint8            `json:"opening_days"`  // Días de apertura representados en un entero de 7 bits
-	WorkingHours       string           `json:"working_hours"` // Horarios de trabajo en formato "HH:MM-HH:MM,HH:MM-HH:MM"
+	BussinessID        int64            `json:"bussiness_id"`                   // Id de la empresa a la que pertenece
+	Name               string           `json:"name"`                           // Openai
+	OpenaiAssistantsID string           `json:"openai_assistants_id,omitempty"` // Openai
+	Description        string           `json:"description,omitempty"`          // Openai
+	Model              string           `json:"model,omitempty"`                // Openai
+	Instructions       string           `json:"instructions,omitempty"`         // Openai
+	Active             bool             `json:"active"`                         // Indica si el assistant está activo
+	EventDuration      int64            `json:"event_duration"`                 // Duracion de cada evento que se programa ej: 15, 30, 60. (esto se cuenta como minutos)
+	AccountGoogle      bool             `json:"account_google"`                 // Indica si el assistant tiene asociada credenciales para registrar eventos en google calendar
+	EventType          string           `json:"event_type"`                     // Typo de evento que se guarda en google calendar ej: turno, reunion
+	EventCountPerDay   int16            `json:"event_count_per_day"`            // Cantidad de eventos por dia que puede tener una persona
+	Bussiness          BussinessDto     `json:"bussiness,omitempty"`            //
+	NumberPhones       []NumberPhoneDto `json:"number_phones,omitempty"`        //
+	Events             []EventsDto      `json:"events,omitempty"`               //
+	OpeningDays        uint8            `json:"opening_days"`                   // Días de apertura representados en un entero de 7 bits
+	WorkingHours       string           `json:"working_hours"`                  // Horarios de trabajo en formato "HH:MM-HH:MM,HH:MM-HH:MM"
 }
 
 func (dto *AssistantDto) ValidateAssistantDto(isCreate bool) error {
@@ -55,16 +55,16 @@ func (dto *AssistantDto) ValidateAssistantDto(isCreate bool) error {
 		return errors.New("la descripción debe tener por lo menos 10 caracteres")
 	}
 
+	if strings.TrimSpace(dto.OpenaiAssistantsID) == "" {
+		return errors.New("openai_assistants_id es obligatorio")
+	}
+
+	if len(dto.Model) < 2 {
+		return errors.New("el modelo debe tener por lo menos 2 caracteres")
+	}
+
 	// Validaciones específicas para edición
 	if !isCreate {
-		if strings.TrimSpace(dto.OpenaiAssistantsID) == "" {
-			return errors.New("openai_assistants_id es obligatorio al editar un asistente")
-		}
-
-		if len(dto.Model) < 2 {
-			return errors.New("el modelo debe tener por lo menos 2 caracteres")
-		}
-
 		if dto.ID <= 0 {
 			return errors.New("el ID del asistente es obligatorio al editar")
 		}

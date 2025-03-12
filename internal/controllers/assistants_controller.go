@@ -84,7 +84,7 @@ func (controller *AssistantController) AddAssistant(c *fiber.Ctx) error {
 
 // Actualizar un asistente
 func (controller *AssistantController) EditAssistant(c *fiber.Ctx) error {
-	id, err := strconv.Atoi(c.Params("id"))
+	id, err := c.ParamsInt("id")
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid ID"})
 	}
