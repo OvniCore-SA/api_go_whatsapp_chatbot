@@ -98,6 +98,7 @@ func Setup(app *fiber.App,
 	api.Post("/webhook", WhatsappController.PostWhatsapp)
 	api.Post("/notificar-datos-clientes", middleware.ValidarPermiso("events.index"), WhatsappController.DemoNotifyInteractions)
 	api.Post("/send-message-basic", middleware.ValidarPermiso("whatsapp.send_message"), WhatsappController.PostSendMessageWhatsapp)
+	api.Post("/send-message-template", WhatsappController.DemoFunctionWhatsappController)
 
 	api.Post("/telegram/send-message", middleware.ValidarPermiso("telegram.send_message"), TelegramService.SendMessageBasic)
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -135,26 +136,37 @@ func (s *GoogleCalendarService) UpdateGoogleCalendarEvent(token *oauth2.Token, c
 		return nil, err
 	}
 
-	// Obtener el evento actual
-	event, err := srv.Events.Get("primary", eventID).Do()
-	if err != nil {
-		return nil, err
+	// Crear un objeto solo con los campos que deseas actualizar
+	event := &calendar.Event{
+		Summary:     eventRequest.Summary,
+		Description: eventRequest.Description,
+		Start: &calendar.EventDateTime{
+			DateTime: eventRequest.Start,
+			TimeZone: "UTC",
+		},
+		End: &calendar.EventDateTime{
+			DateTime: eventRequest.End,
+			TimeZone: "UTC",
+		},
 	}
 
-	// Actualizar los campos
-	event.Summary = eventRequest.Summary
-	event.Description = eventRequest.Description
-	event.Start = &calendar.EventDateTime{
-		DateTime: eventRequest.Start,
-		TimeZone: "UTC",
-	}
-	event.End = &calendar.EventDateTime{
-		DateTime: eventRequest.End,
-		TimeZone: "UTC",
+	// Si quieres asegurar que se mantenga el evento de Meet existente (sin eliminarlo), no hace falta pasar ConferenceData.
+	// Pero si deseas asegurarte de que el evento siempre tenga conferencia de Meet, inclúyelo así:
+	event.ConferenceData = &calendar.ConferenceData{
+		CreateRequest: &calendar.CreateConferenceRequest{
+			RequestId: fmt.Sprintf("meet-%s", eventID), // siempre único
+			ConferenceSolutionKey: &calendar.ConferenceSolutionKey{
+				Type: "hangoutsMeet",
+			},
+		},
 	}
 
-	// Guardar los cambios en Google Calendar
-	updatedEvent, err := srv.Events.Update("primary", eventID, event).Do()
+	// Aplicar cambios usando Patch en vez de Update
+	updatedEvent, err := srv.Events.Patch("primary", eventID, event).
+		ConferenceDataVersion(1).
+		SendUpdates("all").
+		Do()
+
 	if err != nil {
 		return nil, err
 	}

@@ -64,6 +64,33 @@ func NewWhatsappService(usersService *UsersService, logsService *LogsService, op
 	}
 }
 
+// Funcion para pruebas rapidas de funciones
+
+func (service *WhatsappService) DemoFunctionWhatsappService() error {
+	// Crear el mensaje template
+	messageTemplate := metaapi.NewSendMessageWhatsappTemplate(
+		service.utilService.CapitalizeFirstLetter("tipoEvento"),
+		"summary",
+		"startDate",
+		"formattedEnd",
+		"contactToString",
+		"CodeEvent",
+		"5493794869394",
+	)
+
+	// Enviar mensaje template
+	err := service.SendMessageTemplate(
+		messageTemplate,
+		"584560958068135",
+		"EAA4tcznIamABOZBnVvZCB5zOsZBr3rZBkaNOfgxS6xZCGNGW1QExWKu4fdVq7LY3GHmCo6ZBDerWpN4QFb2MThqjj0N6GxDaFZBcAlo4gjQXNqYrFx0rE2TKZBB5ZAP6VLcolbJgtUS8ZCCgV9aWkgSSdoIBjohhUV5rmZBAzEUsuJmhY5ZAHjX8QGuT7ftURxd4B6ycRQZDZD",
+	)
+
+	if err != nil {
+		fmt.Printf("ERROR AL NOTIFICAR EVENTO AL CLIENTE,\nERROR: %s \nCódigo de evento: %s\n", err, "adsfasd")
+	}
+	return nil
+}
+
 func (service *WhatsappService) HandleIncomingMessageWithAssistant(response whatsapp.ResponseComplet) error {
 	for _, entry := range response.Entry {
 		fmt.Println("Len Entry: ", len(response.Entry))
@@ -507,11 +534,27 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 		// Notificar al cliente
 		//  Enviar la notificacion al cliente de que un usuario registró un turno o reunion
 		contactToString := strconv.Itoa(int(numberPhone.NumberPhoneToNotify))
-		textNotifyClient := fmt.Sprintf("✅ *¡Nuevo evento agendad!* 📅\n\n 🔶 %s : *%s*\n⏰ *Hora de Inicio:* %sHs.\n⏳ *Hora de Fin:* %sHs.\n🔏 *Código:* %s.\n\n", service.utilService.CapitalizeFirstLetter(assistant.EventType), eventDTO.Summary, formattedStart, formattedEnd, eventDTO.CodeEvent)
-		message := metaapi.NewSendMessageWhatsappBasic(textNotifyClient, contactToString)
-		err = service.sendMessageBasic(message, strconv.FormatInt(numberPhone.WhatsappNumberPhoneId, 10), numberPhone.TokenPermanent)
+
+		// Crear el mensaje template
+		messageTemplate := metaapi.NewSendMessageWhatsappTemplate(
+			service.utilService.CapitalizeFirstLetter(assistant.EventType),
+			eventDTO.Summary,
+			startDateToStr,
+			formattedEnd,
+			contactToString,
+			eventDTO.CodeEvent,
+			contactToString,
+		)
+
+		// Enviar mensaje template
+		err = service.SendMessageTemplate(
+			messageTemplate,
+			strconv.FormatInt(numberPhone.WhatsappNumberPhoneId, 10),
+			numberPhone.TokenPermanent,
+		)
+
 		if err != nil {
-			fmt.Printf("ERROR AL NOTIFICAR EVENTO AL CLIENTE,\nERROR: %s \nCódigo de evento: %s", err, eventDTO.CodeEvent)
+			fmt.Printf("ERROR AL NOTIFICAR EVENTO AL CLIENTE,\nERROR: %s \nCódigo de evento: %s\n", err, eventDTO.CodeEvent)
 		}
 
 	case "updateEvents":
@@ -580,7 +623,7 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 				Summary:     eventDTO.Summary,
 				Description: assistantResp.UserData.UserName + ", " + assistantResp.UserData.UserEmail,
 				Start:       eventDTO.StartDate,
-				End:         eventDTO.StartDate,
+				End:         eventDTO.EndDate,
 				ContactsID:  uint(contact.ID),
 			}
 
@@ -594,11 +637,28 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 		// Notificar al cliente
 		//  Enviar la notificacion al cliente de que un usuario registró un turno o reunion
 		contactToString := strconv.Itoa(int(numberPhone.NumberPhoneToNotify))
-		textNotifyClient := fmt.Sprintf("✅ %s actualizada ! 📅\n\n 🔶 %s : *%s*\n⏰ *Hora de Inicio:* %sHs.\n⏳ *Hora de Fin:* %sHs.\n🔏 *Código:* %s.\n\n", service.utilService.CapitalizeFirstLetter(assistant.EventType), eventDTO.Summary, assistantResp.UserData.NewDate, endDate, eventDTO.CodeEvent)
-		message := metaapi.NewSendMessageWhatsappBasic(textNotifyClient, contactToString)
-		err = service.sendMessageBasic(message, strconv.FormatInt(numberPhone.WhatsappNumberPhoneId, 10), numberPhone.TokenPermanent)
+		endDateStr = endDate.Format("2006-01-02 15:04:05")
+
+		// Crear el mensaje template
+		messageTemplate := metaapi.NewSendMessageWhatsappTemplate(
+			service.utilService.CapitalizeFirstLetter(assistant.EventType),
+			eventDTO.Summary,
+			assistantResp.UserData.NewDate,
+			endDateStr,
+			contactToString,
+			eventDTO.CodeEvent,
+			contactToString,
+		)
+
+		// Enviar mensaje template
+		err = service.SendMessageTemplate(
+			messageTemplate,
+			strconv.FormatInt(numberPhone.WhatsappNumberPhoneId, 10),
+			numberPhone.TokenPermanent,
+		)
+
 		if err != nil {
-			fmt.Printf("ERROR AL NOTIFICAR EVENTO AL CLIENTE,\nERROR: %s \nCódigo de evento: %s", err, eventDTO.CodeEvent)
+			fmt.Printf("ERROR AL NOTIFICAR EVENTO AL CLIENTE,\nERROR: %s \nCódigo de evento: %s\n", err, eventDTO.CodeEvent)
 		}
 
 	case "deleteEvent":
@@ -1063,4 +1123,47 @@ func extractMessageInfo(value whatsapp.Value) (sender, text, fechaMessage, messa
 	phoneNumberID = value.Metadata.PhoneNumberID
 
 	return sender, text, fechaMessage, messageType, phoneNumberID, nil
+}
+
+func (service *WhatsappService) SendMessageTemplate(message metaapi.SendMessageTemplate, phoneNumberId, tokenApiWhatsapp string) error {
+	reqJSON, err := json.Marshal(message)
+	if err != nil {
+		fmt.Println("Error al convertir la plantilla a JSON:", err)
+		return err
+	}
+
+	client := &http.Client{}
+
+	base, err := url.Parse(os.Getenv("WHATSAPP_URL") + "/" + os.Getenv("WHATSAPP_VERSION") + "/" + phoneNumberId + "/messages")
+	if err != nil {
+		fmt.Println("Error:", err)
+		return err
+	}
+
+	req, err := http.NewRequest("POST", base.String(), bytes.NewBuffer(reqJSON))
+	if err != nil {
+		fmt.Println("Error al construir solicitud POST:", err)
+		return err
+	}
+
+	req.Header.Set("Authorization", "Bearer "+tokenApiWhatsapp)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Println("Error al realizar la petición:", err)
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		respuesta, erro := VerCuerpoRespuesta(resp)
+		if erro != nil {
+			fmt.Println("Error al mostrar respuesta erronea")
+		}
+		fmt.Println(respuesta)
+		return fmt.Errorf("Codigo error: %s", resp.Status)
+	}
+
+	return nil
 }

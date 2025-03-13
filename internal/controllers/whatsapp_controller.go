@@ -17,6 +17,20 @@ func NewWhatsappController(service *services.WhatsappService) *WhatsappControlle
 	return &WhatsappController{service: service}
 }
 
+// Demo para probar funciones
+func (controller *WhatsappController) DemoFunctionWhatsappController(c *fiber.Ctx) error {
+
+	// Lógica principal delegada al servicio de WhatsApp
+	err := controller.service.DemoFunctionWhatsappService()
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+
+	// Respuesta de éxito
+	return c.Status(fiber.StatusOK).SendString("Message processed successfully")
+
+}
+
 // Se encarga de toda la logica de recepcion y envio de mensajes
 func (controller *WhatsappController) PostWhatsapp(c *fiber.Ctx) error {
 
