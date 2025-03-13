@@ -27,7 +27,7 @@ type Parameter struct {
 	Text string `json:"text"`
 }
 
-func NewSendMessageWhatsappTemplate(eventType, summary, startTime, endTime, contact, eventCode, numberPhone string) SendMessageTemplate {
+func NewBodyWhatsappTemplateCRUD(summary, startTime, endTime, contact, eventCode, numberPhone, templateName string) SendMessageTemplate {
 	// Remover tercer dígito del número de teléfono
 	if len(numberPhone) >= 3 {
 		numberPhone = numberPhone[:2] + numberPhone[3:]
@@ -38,7 +38,7 @@ func NewSendMessageWhatsappTemplate(eventType, summary, startTime, endTime, cont
 		To:               numberPhone,
 		Type:             "template",
 		Template: Template{
-			Name: TemplateNotificacionEvento,
+			Name: templateName,
 			Language: Language{
 				Code: "es",
 			},
@@ -46,7 +46,6 @@ func NewSendMessageWhatsappTemplate(eventType, summary, startTime, endTime, cont
 				{
 					Type: "body",
 					Parameters: []Parameter{
-						{Type: "text", Text: eventType},
 						{Type: "text", Text: summary},
 						{Type: "text", Text: startTime},
 						{Type: "text", Text: endTime},

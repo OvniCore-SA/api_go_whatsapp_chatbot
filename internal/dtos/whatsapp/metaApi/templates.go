@@ -1,6 +1,7 @@
 package metaapi
 
 const (
-	TemplateReunionAgendada    = "reunion_agendada"
-	TemplateNotificacionEvento = "notificacion_evento"
+	TemplateEventoCreado     = "evento_creado"
+	TemplateEventoModificado = "evento_modificado"
+	TemplateEventoCancelado  = "evento_eliminado"
 )

@@ -66,23 +66,23 @@ func NewWhatsappService(usersService *UsersService, logsService *LogsService, op
 
 // Funcion para pruebas rapidas de funciones
 
-func (service *WhatsappService) DemoFunctionWhatsappService() error {
+func (service *WhatsappService) DemoFunctionWhatsappService(templateName, numberPhoneIDWhatsapp, tokenWhatsapp string) error {
 	// Crear el mensaje template
-	messageTemplate := metaapi.NewSendMessageWhatsappTemplate(
-		service.utilService.CapitalizeFirstLetter("tipoEvento"),
+	messageTemplate := metaapi.NewBodyWhatsappTemplateCRUD(
 		"summary",
 		"startDate",
 		"formattedEnd",
 		"contactToString",
 		"CodeEvent",
 		"5493794869394",
+		templateName,
 	)
 
 	// Enviar mensaje template
 	err := service.SendMessageTemplate(
 		messageTemplate,
-		"584560958068135",
-		"EAA4tcznIamABOZBnVvZCB5zOsZBr3rZBkaNOfgxS6xZCGNGW1QExWKu4fdVq7LY3GHmCo6ZBDerWpN4QFb2MThqjj0N6GxDaFZBcAlo4gjQXNqYrFx0rE2TKZBB5ZAP6VLcolbJgtUS8ZCCgV9aWkgSSdoIBjohhUV5rmZBAzEUsuJmhY5ZAHjX8QGuT7ftURxd4B6ycRQZDZD",
+		numberPhoneIDWhatsapp,
+		tokenWhatsapp,
 	)
 
 	if err != nil {
@@ -536,14 +536,14 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 		contactToString := strconv.Itoa(int(numberPhone.NumberPhoneToNotify))
 
 		// Crear el mensaje template
-		messageTemplate := metaapi.NewSendMessageWhatsappTemplate(
-			service.utilService.CapitalizeFirstLetter(assistant.EventType),
+		messageTemplate := metaapi.NewBodyWhatsappTemplateCRUD(
 			eventDTO.Summary,
 			startDateToStr,
 			formattedEnd,
 			contactToString,
 			eventDTO.CodeEvent,
 			contactToString,
+			metaapi.TemplateEventoCreado,
 		)
 
 		// Enviar mensaje template
@@ -640,14 +640,14 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 		endDateStr = endDate.Format("2006-01-02 15:04:05")
 
 		// Crear el mensaje template
-		messageTemplate := metaapi.NewSendMessageWhatsappTemplate(
-			service.utilService.CapitalizeFirstLetter(assistant.EventType),
+		messageTemplate := metaapi.NewBodyWhatsappTemplateCRUD(
 			eventDTO.Summary,
 			assistantResp.UserData.NewDate,
 			endDateStr,
 			contactToString,
 			eventDTO.CodeEvent,
 			contactToString,
+			metaapi.TemplateEventoModificado,
 		)
 
 		// Enviar mensaje template

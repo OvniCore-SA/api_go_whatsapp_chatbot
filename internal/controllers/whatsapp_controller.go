@@ -20,8 +20,12 @@ func NewWhatsappController(service *services.WhatsappService) *WhatsappControlle
 // Demo para probar funciones
 func (controller *WhatsappController) DemoFunctionWhatsappController(c *fiber.Ctx) error {
 
+	templateName := c.Query("template_name")
+	numberPhoneIDWhatsapp := c.Query("number_phone_id_whatsapp")
+	tokenWhatsapp := c.Query("token_whatsapp")
+
 	// Lógica principal delegada al servicio de WhatsApp
-	err := controller.service.DemoFunctionWhatsappService()
+	err := controller.service.DemoFunctionWhatsappService(templateName, numberPhoneIDWhatsapp, tokenWhatsapp)
 	if err != nil {
 		fmt.Println(err.Error())
 	}
