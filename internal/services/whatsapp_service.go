@@ -528,7 +528,7 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 
 		// Mensaje de respuesta
 		responseUser = fmt.Sprintf(
-			"✅ ¡Tu nuevo evento se agendó éxito! 📅\n\n🕒 Inicio: %s \n🕒 Fin: %s.\n🔏 Código: %s\n\nTe esperamos... ¡Que tengas un excelente día! 😊",
+			"✅ ¡Tu nuevo evento se agendó con éxito! 📅\n\n🕒 Inicio: %s \n🕒 Fin: %s.\n🔏 Código: %s\n\nTe esperamos... ¡Que tengas un excelente día! 😊",
 			formattedStart, formattedEnd, eventDTO.CodeEvent)
 
 		// Notificar al cliente
@@ -632,7 +632,7 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 			}
 		}
 
-		responseUser = "✅ Su reunion ha sido modificada con éxito. Si nesesitas cualquier otra cosa, estoy acá para ayudarte 😊"
+		responseUser = "✅ Tu evento ha sido modificada con éxito. Si nesesitas cualquier otra cosa, estoy acá para ayudarte 😊"
 
 		// Notificar al cliente
 		//  Enviar la notificacion al cliente de que un usuario registró un turno o reunion
