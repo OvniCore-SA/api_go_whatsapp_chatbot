@@ -7,6 +7,7 @@ import (
 
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities"
+	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities/filters"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/repositories/mysql_client"
 	"golang.org/x/exp/rand"
 )
@@ -15,7 +16,7 @@ import (
 type EventsService interface {
 	Create(eventDTO dtos.EventsDto) error
 	GetByID(id int) (*dtos.EventsDto, error)
-	GetAll(request *dtos.EventsDto) ([]dtos.EventsDto, dtos.EventsDto, error)
+	GetAll(request *filters.EventsFilter, pagination *dtos.Pagination) ([]dtos.EventsDto, dtos.Pagination, error)
 	Update(eventDTO dtos.EventsDto) error
 	Delete(id int) error
 	Cancel(codeEvent string) error
@@ -124,10 +125,10 @@ func (s *eventsServiceImpl) GetByID(id int) (*dtos.EventsDto, error) {
 }
 
 // Obtener todos los eventos y devolver DTOs
-func (s *eventsServiceImpl) GetAll(request *dtos.EventsDto) ([]dtos.EventsDto, dtos.EventsDto, error) {
-	events, total, err := s.repo.FindAll(request)
+func (s *eventsServiceImpl) GetAll(request *filters.EventsFilter, pagination *dtos.Pagination) ([]dtos.EventsDto, dtos.Pagination, error) {
+	events, total, err := s.repo.FindAll(request, pagination)
 	if err != nil {
-		return nil, dtos.EventsDto{}, err
+		return nil, dtos.Pagination{}, err
 	}
 
 	// Convertir entidades a DTOs
@@ -137,12 +138,12 @@ func (s *eventsServiceImpl) GetAll(request *dtos.EventsDto) ([]dtos.EventsDto, d
 	}
 
 	// Actualizar la paginación con la información total
-	request.Total = total
-	request.LastPage = uint32((total + int64(request.Size) - 1) / int64(request.Size))
-	request.From = (request.Number-1)*request.Size + 1
-	request.To = request.From + uint32(len(eventsDTOs)) - 1
+	pagination.Total = total
+	pagination.LastPage = uint32((total + int64(pagination.Size) - 1) / int64(pagination.Size))
+	pagination.From = (pagination.Number-1)*pagination.Size + 1
+	pagination.To = pagination.From + uint32(len(eventsDTOs)) - 1
 
-	return eventsDTOs, *request, nil
+	return eventsDTOs, *pagination, nil
 }
 
 // Actualizar un evento desde un DTO

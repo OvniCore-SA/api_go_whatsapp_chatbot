@@ -4,6 +4,7 @@ import (
 	"strconv"
 
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos"
+	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities/filters"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/services"
 	"github.com/gofiber/fiber/v2"
 )
@@ -49,9 +50,26 @@ func (ec *EventsController) GetEventByID(c *fiber.Ctx) error {
 
 // Obtener todos los eventos
 func (ec *EventsController) GetAllEvents(c *fiber.Ctx) error {
-	request := new(dtos.EventsDto)
+	request := new(filters.EventsFilter)
+	pagination := new(dtos.Pagination)
 
 	if err := c.QueryParser(request); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  false,
+			"message": "Error parsing request parameters",
+			"error":   err.Error(),
+		})
+	}
+
+	if err := request.Validate(); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  false,
+			"message": "error de validación",
+			"error":   err.Error(),
+		})
+	}
+
+	if err := c.QueryParser(pagination); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  false,
 			"message": "Error parsing pagination parameters",
@@ -59,15 +77,19 @@ func (ec *EventsController) GetAllEvents(c *fiber.Ctx) error {
 		})
 	}
 
-	request.Pagination.SetDefaults()
+	pagination.SetDefaults()
 
-	events, paginacion, err := ec.eventsService.GetAll(request)
+	events, paginacion, err := ec.eventsService.GetAll(request, pagination)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  false,
 			"message": "Error retrieving events",
 			"error":   err.Error(),
 		})
+	}
+
+	if len(events) == 0 {
+		return c.Status(fiber.StatusNoContent).JSON(fiber.Map{})
 	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{

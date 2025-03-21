@@ -9,7 +9,6 @@ import (
 
 // EventsDto representa la estructura de un evento con validaciones
 type EventsDto struct {
-	Pagination
 	ID                    int    `json:"id"`
 	Summary               string `json:"summary" validate:"required,min=3,max=255"`
 	Description           string `json:"description" validate:"required,min=5,max=500"`
@@ -20,6 +19,7 @@ type EventsDto struct {
 	ContactsID            int64  `json:"contacts_id" validate:"required,gt=0"`
 	CodeEvent             string `json:"code_event" validate:"omitempty"`
 	CreatedAt             string `json:"created_at"`
+	MonthYear             string `json:"month_year" validate:"required,len=7,datetime=2006-01"`
 }
 
 // Validador de datos del DTO
