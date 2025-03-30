@@ -9,6 +9,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos"
@@ -392,13 +393,10 @@ func (s *AssistantService) DeleteAssistant(id int64) error {
 	// Eliminar el asistente en OpenAI
 	err = s.DeleteOpenAIAssistant(assistant.OpenaiAssistantsID)
 	if err != nil {
-		return fmt.Errorf("failed to delete assistant from OpenAI: %w", err)
-	}
-
-	// Si se elimina correctamente de la base de datos paso a eliminar el assistant en OPENAI
-	err = s.openAIAssistantService.DeleteAssistant(assistant.OpenaiAssistantsID)
-	if err != nil {
-		fmt.Println("failed to delete assistant from OpenAI: %w", err)
+		fmt.Println(err.Error())
+		if !strings.Contains(err.Error(), "No assistant found with id") {
+			return fmt.Errorf("failed to delete assistant from OpenAI: %w", err)
+		}
 	}
 
 	return s.repository.Delete(id)

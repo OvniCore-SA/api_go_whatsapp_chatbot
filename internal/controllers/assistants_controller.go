@@ -178,7 +178,7 @@ func (controller *AssistantController) DeleteAssistant(c *fiber.Ctx) error {
 
 	err = controller.service.DeleteAssistant(int64(id))
 	if err != nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Assistant not found"})
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": err.Error()})
 	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": true, "message": "Assistant deleted successfully", "data": id})
