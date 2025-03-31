@@ -1,6 +1,8 @@
 package services
 
 import (
+	"fmt"
+
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/repositories/mysql_client"
@@ -28,7 +30,7 @@ func (s *ContactsService) GetAll() ([]dtos.ContactDto, error) {
 	return dtos, nil
 }
 
-func (s *ContactsService) GetById(id string) (dtos.ContactDto, error) {
+func (s *ContactsService) GetById(id int64) (dtos.ContactDto, error) {
 	record, err := s.repository.FindByID(id)
 	if err != nil {
 		return dtos.ContactDto{}, err
@@ -70,4 +72,16 @@ func (s *ContactsService) GetContactsByNumberPhone(numberPhoneID int64, page int
 	}
 
 	return dtos, total, nil
+}
+
+func (s *ContactsService) UpdateIsBlocked(contactID int64, numberPhoneID int64, isBlocked bool) error {
+	contact, err := s.repository.FindByID(contactID)
+	if err != nil {
+		return err
+	}
+	if contact.NumberPhonesID != numberPhoneID {
+		return fmt.Errorf("el contactoID no pertenece al numero de telefono de asistente enviado")
+	}
+	// Llamar al repositorio para actualizar el campo IsBlocked
+	return s.repository.UpdateIsBlocked(contactID, isBlocked)
 }

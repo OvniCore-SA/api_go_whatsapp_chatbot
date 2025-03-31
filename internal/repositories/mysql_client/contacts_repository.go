@@ -60,7 +60,7 @@ func (r *ContactsRepository) Create(record entities.Contact) error {
 }
 
 // FindByID retrieves a contact record by its ID
-func (r *ContactsRepository) FindByID(id string) (entities.Contact, error) {
+func (r *ContactsRepository) FindByID(id int64) (entities.Contact, error) {
 	var record entities.Contact
 	err := r.db.First(&record, id).Error
 	return record, err
@@ -88,4 +88,10 @@ func (r *ContactsRepository) List() ([]entities.Contact, error) {
 	var records []entities.Contact
 	err := r.db.Find(&records).Error
 	return records, err
+}
+
+func (r *ContactsRepository) UpdateIsBlocked(contactID int64, isBlocked bool) error {
+	return r.db.Model(&entities.Contact{}).
+		Where("id = ?", contactID).
+		Update("is_blocked", isBlocked).Error
 }

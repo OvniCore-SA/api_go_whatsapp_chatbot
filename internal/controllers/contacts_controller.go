@@ -52,3 +52,40 @@ func (controller *ContactsController) GetMessagesByNumberPhone(c *fiber.Ctx) err
 		},
 	})
 }
+
+func (controller *ContactsController) UpdateIsBlocked(c *fiber.Ctx) error {
+	// Obtener el ID del número de teléfono desde los parámetros
+	contactID, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Número de teléfono inválido",
+		})
+	}
+
+	// Obtener el ID del número de teléfono desde los parámetros
+	numberPhoneID, err := strconv.ParseInt(c.Params("number_phone_id"), 10, 64)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Número de teléfono inválido",
+		})
+	}
+
+	block := c.QueryBool("block", false)
+
+	// Llamar al servicio para actualizar el campo IsBlocked
+	err = controller.service.UpdateIsBlocked(contactID, numberPhoneID, block)
+	if err != nil {
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{
+			"status":  "error",
+			"message": err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":  true,
+		"message": "El contacto ha sido bloqueado exitosamente",
+		"data":    nil,
+	})
+}

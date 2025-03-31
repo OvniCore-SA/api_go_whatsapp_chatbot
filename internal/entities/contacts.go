@@ -12,6 +12,7 @@ type Contact struct {
 	NumberPhonesID    int64       `gorm:"not null"`
 	NumberPhoneEntity NumberPhone `gorm:"foreignKey:NumberPhonesID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 	NumberPhone       int64       `gorm:"not null"`
+	IsBlocked         bool
 
 	CountTokens string
 	Events      []Events `gorm:"foreignKey:ContactsID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"` // Relación con Events
@@ -27,6 +28,7 @@ func MapEntityToContactDto(entity Contact) dtos.ContactDto {
 		NumberPhonesID: entity.NumberPhonesID,
 		ContactNumber:  entity.NumberPhone,
 		CountTokens:    entity.CountTokens,
+		IsBlocked:      entity.IsBlocked,
 	}
 }
 
@@ -36,5 +38,6 @@ func MapDtoToContact(dto dtos.ContactDto) Contact {
 		NumberPhonesID: dto.NumberPhonesID,
 		NumberPhone:    dto.ContactNumber,
 		CountTokens:    dto.CountTokens,
+		IsBlocked:      dto.IsBlocked,
 	}
 }

@@ -79,6 +79,7 @@ func Setup(app *fiber.App,
 
 	// CONTACTS
 	api.Get("/contacts/number_phone/:number_phone_id", middleware.ValidarPermiso("contacts.index"), ContactController.GetMessagesByNumberPhone)
+	api.Patch("/contacts/:id/number_phone/:number_phone_id", middleware.ValidarPermiso("contacts.block"), ContactController.UpdateIsBlocked)
 
 	api.Get("/users", middleware.ValidarPermiso("users.index"), UsersController.GetAll)
 	api.Get("/users/:id", middleware.ValidarPermiso("users.show"), UsersController.GetById)

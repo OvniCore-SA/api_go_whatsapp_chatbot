@@ -135,6 +135,11 @@ func (service *WhatsappService) HandleIncomingMessageWithAssistant(response what
 					return err
 				}
 
+				if contact.IsBlocked {
+					log.Printf("contacto bloqueado")
+					return nil
+				}
+
 				// Manejar el mensaje con OpenAI
 				err = service.handleMessageWithOpenAI(contact, text, message.ID, numberPhone)
 				if err != nil {
@@ -533,7 +538,8 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 
 		// Notificar al cliente
 		//  Enviar la notificacion al cliente de que un usuario registró un turno o reunion
-		contactToString := strconv.Itoa(int(numberPhone.NumberPhoneToNotify))
+		contactToString := strconv.Itoa(int(contact.NumberPhone))
+		contactForNotifyToString := strconv.Itoa(int(numberPhone.NumberPhoneToNotify))
 
 		// Crear el mensaje template
 		messageTemplate := metaapi.NewBodyWhatsappTemplateCRUD(
@@ -542,7 +548,7 @@ func (service *WhatsappService) handleMessageWithOpenAI(contact *entities.Contac
 			formattedEnd,
 			contactToString,
 			eventDTO.CodeEvent,
-			contactToString,
+			contactForNotifyToString,
 			metaapi.TemplateEventoCreado,
 		)
 
