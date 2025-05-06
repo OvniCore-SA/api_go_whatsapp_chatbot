@@ -3,14 +3,14 @@ package services
 import (
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities"
-	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/repositories/mysql_client"
+	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/repositories/postgres_client"
 )
 
 type Password_resetsService struct {
-	repository *mysql_client.PasswordResetsRepository
+	repository *postgres_client.PasswordResetsRepository
 }
 
-func NewPassword_resetsService(repository *mysql_client.PasswordResetsRepository) *Password_resetsService {
+func NewPassword_resetsService(repository *postgres_client.PasswordResetsRepository) *Password_resetsService {
 	return &Password_resetsService{repository: repository}
 }
 

@@ -8,7 +8,7 @@ import (
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities/filters"
-	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/repositories/mysql_client"
+	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/repositories/postgres_client"
 	"golang.org/x/exp/rand"
 )
 
@@ -32,11 +32,11 @@ type EventsService interface {
 
 // Implementación del servicio
 type eventsServiceImpl struct {
-	repo        mysql_client.EventsRepository
+	repo        postgres_client.EventsRepository
 	utilService UtilService
 }
 
-func NewEventsService(repo mysql_client.EventsRepository, utilService UtilService) EventsService {
+func NewEventsService(repo postgres_client.EventsRepository, utilService UtilService) EventsService {
 	return &eventsServiceImpl{
 		repo:        repo,
 		utilService: utilService,

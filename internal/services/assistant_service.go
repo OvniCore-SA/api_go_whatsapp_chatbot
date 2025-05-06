@@ -14,17 +14,17 @@ import (
 
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities"
-	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/repositories/mysql_client"
+	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/repositories/postgres_client"
 )
 
 type AssistantService struct {
-	repository             *mysql_client.AssistantRepository
+	repository             *postgres_client.AssistantRepository
 	serviceFile            *FileService
 	openAIAssistantService *OpenAIAssistantService
 	client                 *http.Client
 }
 
-func NewAssistantService(repository *mysql_client.AssistantRepository, serviceFile *FileService, openAIAssistantService *OpenAIAssistantService) *AssistantService {
+func NewAssistantService(repository *postgres_client.AssistantRepository, serviceFile *FileService, openAIAssistantService *OpenAIAssistantService) *AssistantService {
 	return &AssistantService{
 		repository:             repository,
 		serviceFile:            serviceFile,

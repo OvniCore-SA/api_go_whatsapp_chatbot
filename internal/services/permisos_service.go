@@ -3,14 +3,14 @@ package services
 import (
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities"
-	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/repositories/mysql_client"
+	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/repositories/postgres_client"
 )
 
 type PermissionsService struct {
-	repository *mysql_client.PermissionsRepository
+	repository *postgres_client.PermissionsRepository
 }
 
-func NewPermissionsService(repository *mysql_client.PermissionsRepository) *PermissionsService {
+func NewPermissionsService(repository *postgres_client.PermissionsRepository) *PermissionsService {
 	return &PermissionsService{repository: repository}
 }
 

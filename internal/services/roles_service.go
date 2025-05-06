@@ -3,14 +3,14 @@ package services
 import (
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities"
-	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/repositories/mysql_client"
+	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/repositories/postgres_client"
 )
 
 type RolesService struct {
-	repository *mysql_client.RolesRepository
+	repository *postgres_client.RolesRepository
 }
 
-func NewRolesService(repository *mysql_client.RolesRepository) *RolesService {
+func NewRolesService(repository *postgres_client.RolesRepository) *RolesService {
 	return &RolesService{repository: repository}
 }
 

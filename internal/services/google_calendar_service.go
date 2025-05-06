@@ -11,7 +11,7 @@ import (
 
 	googlecalendar "github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos/googleCalendar"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities"
-	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/repositories/mysql_client"
+	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/repositories/postgres_client"
 	"golang.org/x/oauth2"
 	"google.golang.org/api/calendar/v3"
 	"google.golang.org/api/option"
@@ -19,12 +19,12 @@ import (
 )
 
 type GoogleCalendarService struct {
-	repository       *mysql_client.GoogleCalendarCredentialsRepository
+	repository       *postgres_client.GoogleCalendarCredentialsRepository
 	AssistantService AssistantService
 	EventsService    EventsService
 }
 
-func NewGoogleCalendarService(repository *mysql_client.GoogleCalendarCredentialsRepository, assistantService AssistantService, eventsService EventsService) *GoogleCalendarService {
+func NewGoogleCalendarService(repository *postgres_client.GoogleCalendarCredentialsRepository, assistantService AssistantService, eventsService EventsService) *GoogleCalendarService {
 	return &GoogleCalendarService{
 		repository:       repository,
 		AssistantService: assistantService,

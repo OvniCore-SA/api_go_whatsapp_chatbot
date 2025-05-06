@@ -10,16 +10,16 @@ import (
 
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities"
-	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/repositories/mysql_client"
+	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/repositories/postgres_client"
 	"github.com/minio/minio-go/v7"
 )
 
 type FileService struct {
-	repository  *mysql_client.FileRepository
+	repository  *postgres_client.FileRepository
 	minioClient *minio.Client
 }
 
-func NewFileService(repository *mysql_client.FileRepository, minioClient *minio.Client) *FileService {
+func NewFileService(repository *postgres_client.FileRepository, minioClient *minio.Client) *FileService {
 	return &FileService{repository: repository, minioClient: minioClient}
 }
 

@@ -6,16 +6,16 @@ import (
 
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities"
-	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/repositories/mysql_client"
+	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/repositories/postgres_client"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type UsersService struct {
-	repository   *mysql_client.UsersRepository
+	repository   *postgres_client.UsersRepository
 	rolesService *RolesService
 }
 
-func NewUsersService(repository *mysql_client.UsersRepository, rolesService *RolesService) *UsersService {
+func NewUsersService(repository *postgres_client.UsersRepository, rolesService *RolesService) *UsersService {
 	return &UsersService{repository: repository, rolesService: rolesService}
 }
 
@@ -34,12 +34,12 @@ func (s *UsersService) GetAll() ([]dtos.UsersDto, error) {
 }
 
 func (s *UsersService) GetById(id int64) (dtos.UsersDto, error) {
-	record, err := s.repository.FindByID(id)
+	record, err := s.repository.FindByID(uint(id))
 	if err != nil {
 		return dtos.UsersDto{}, err
 	}
 
-	return entities.MapEntitiesToUsersDto(record), nil
+	return entities.MapEntitiesToUsersDto(*record), nil
 }
 
 func (s *UsersService) Create(dto dtos.UsersDto) error {

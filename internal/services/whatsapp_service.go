@@ -24,7 +24,7 @@ import (
 	whatsappservicedto "github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos/whatsapp_service_DTO"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities/filters"
-	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/repositories/mysql_client"
+	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/repositories/postgres_client"
 	"golang.org/x/exp/rand"
 	"golang.org/x/oauth2"
 	"google.golang.org/api/calendar/v3"
@@ -37,7 +37,7 @@ type WhatsappService struct {
 	utilService            *UtilService
 	userSessions           map[string]*whatsapp.UserSession // Mapa para almacenar sesiones por PhoneNumberID
 	numberPhone            *NumberPhonesService
-	messagesRepository     *mysql_client.MessagesRepository
+	messagesRepository     *postgres_client.MessagesRepository
 	assistantService       *AssistantService
 	configurationService   *ConfigurationsService
 	googleCalendarService  *GoogleCalendarService
@@ -46,7 +46,7 @@ type WhatsappService struct {
 	threadService          *ThreadService
 }
 
-func NewWhatsappService(usersService *UsersService, logsService *LogsService, openAIAssistantService *OpenAIAssistantService, utilService *UtilService, numberPhone *NumberPhonesService, messagesRepository *mysql_client.MessagesRepository, assistantService *AssistantService, configurationService *ConfigurationsService, googleCalendarService *GoogleCalendarService, oauthConfig *oauth2.Config, eventsService EventsService, threadService *ThreadService) *WhatsappService {
+func NewWhatsappService(usersService *UsersService, logsService *LogsService, openAIAssistantService *OpenAIAssistantService, utilService *UtilService, numberPhone *NumberPhonesService, messagesRepository *postgres_client.MessagesRepository, assistantService *AssistantService, configurationService *ConfigurationsService, googleCalendarService *GoogleCalendarService, oauthConfig *oauth2.Config, eventsService EventsService, threadService *ThreadService) *WhatsappService {
 	return &WhatsappService{
 		usersService:           usersService,
 		logsService:            logsService,

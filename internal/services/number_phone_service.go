@@ -4,14 +4,14 @@ import (
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities/filters"
-	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/repositories/mysql_client"
+	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/repositories/postgres_client"
 )
 
 type NumberPhonesService struct {
-	repository *mysql_client.NumberPhonesRepository
+	repository *postgres_client.NumberPhonesRepository
 }
 
-func NewNumberPhonesService(repository *mysql_client.NumberPhonesRepository) *NumberPhonesService {
+func NewNumberPhonesService(repository *postgres_client.NumberPhonesRepository) *NumberPhonesService {
 	return &NumberPhonesService{repository: repository}
 }
 

@@ -8,18 +8,18 @@ import (
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities/mappers"
-	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/repositories/mysql_client"
+	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/repositories/postgres_client"
 	"gorm.io/gorm"
 )
 
 // ThreadService define la lógica de negocio para hilos
 type ThreadService struct {
-	threadRepo             *mysql_client.ThreadRepository
+	threadRepo             *postgres_client.ThreadRepository
 	openAIAssistantService *OpenAIAssistantService
 }
 
 // NewThreadService crea una nueva instancia del servicio
-func NewThreadService(threadRepo *mysql_client.ThreadRepository, openAIAssistantService *OpenAIAssistantService) *ThreadService {
+func NewThreadService(threadRepo *postgres_client.ThreadRepository, openAIAssistantService *OpenAIAssistantService) *ThreadService {
 	return &ThreadService{threadRepo: threadRepo, openAIAssistantService: openAIAssistantService}
 }
 

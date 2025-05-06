@@ -9,7 +9,7 @@ import (
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/api/middlewares"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/config"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/controllers"
-	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/repositories/mysql_client"
+	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/repositories/postgres_client"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/routes"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/services"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -75,51 +75,51 @@ func main() {
 	OpenAIAssistantClient := services.NewOpenAIAssistantService(os.Getenv("OPENAI_API_KEY"))
 
 	// Inicialización de repositorios y servicios
-	RolesRepository := mysql_client.NewRolesRepository(db)
+	RolesRepository := postgres_client.NewRolesRepository(db)
 	RolesService := services.NewRolesService(RolesRepository)
 	UtilService := services.NewUtilService()
-	UsersRepository := mysql_client.NewUsersRepository(db)
+	UsersRepository := postgres_client.NewUsersRepository(db)
 	UsersService := services.NewUsersService(UsersRepository, RolesService)
 	UsersController := controllers.NewUsersController(UsersService)
-	LogsRepository := mysql_client.NewLogsRepository(db)
+	LogsRepository := postgres_client.NewLogsRepository(db)
 	LogsService := services.NewLogsService(LogsRepository)
 	LogsController := controllers.NewLogsController(LogsService)
-	Password_resetsRepository := mysql_client.NewPasswordResetsRepository(db)
+	Password_resetsRepository := postgres_client.NewPasswordResetsRepository(db)
 	Password_resetsService := services.NewPassword_resetsService(Password_resetsRepository)
 	Password_resetsController := controllers.NewPassword_resetsController(Password_resetsService)
-	MessageRepository := mysql_client.NewMessagesRepository(db)
+	MessageRepository := postgres_client.NewMessagesRepository(db)
 	MessageService := services.NewMessagesService(MessageRepository)
 	MessageController := controllers.NewMessagesController(MessageService)
 
-	ContactRepository := mysql_client.NewContactsRepository(db)
+	ContactRepository := postgres_client.NewContactsRepository(db)
 	ContactService := services.NewContactsService(ContactRepository)
 	ContactController := controllers.NewContactsController(ContactService)
 
 	RolesController := controllers.NewRolesController(RolesService)
-	PermissionsRepository := mysql_client.NewPermissionsRepository(db)
+	PermissionsRepository := postgres_client.NewPermissionsRepository(db)
 	PermissionsService := services.NewPermissionsService(PermissionsRepository)
 	PermissionsController := controllers.NewPermissionsController(PermissionsService)
-	NumberPhonesRepository := mysql_client.NewNumberPhonesRepository(db)
+	NumberPhonesRepository := postgres_client.NewNumberPhonesRepository(db)
 	NumberPhonesService := services.NewNumberPhonesService(NumberPhonesRepository)
 	NumberPhonesController := controllers.NewNumberPhonesController(NumberPhonesService)
-	FileRepository := mysql_client.NewFileRepository(db)
+	FileRepository := postgres_client.NewFileRepository(db)
 	FileService := services.NewFileService(FileRepository, minioClient)
 	FileController := controllers.NewFileController(FileService)
-	ConfigurationRepository := mysql_client.NewConfigurationsRepository(db)
+	ConfigurationRepository := postgres_client.NewConfigurationsRepository(db)
 	ConfigurationService := services.NewConfigurationsService(ConfigurationRepository)
-	AssistantRepository := mysql_client.NewAssistantRepository(db)
+	AssistantRepository := postgres_client.NewAssistantRepository(db)
 	AssistantService := services.NewAssistantService(AssistantRepository, FileService, OpenAIAssistantClient)
 	AssistantController := controllers.NewAssistantController(AssistantService)
-	EventsRepository := mysql_client.NewEventsRepository(db)
+	EventsRepository := postgres_client.NewEventsRepository(db)
 	EventsService := services.NewEventsService(EventsRepository, *UtilService)
 	EventsController := controllers.NewEventsController(EventsService)
-	GoogleCalendarRepository := mysql_client.NewGoogleCalendarConfigsRepository(db)
+	GoogleCalendarRepository := postgres_client.NewGoogleCalendarConfigsRepository(db)
 	GoogleCalendarService := services.NewGoogleCalendarService(GoogleCalendarRepository, *AssistantService, EventsService)
-	ThreadRepository := mysql_client.NewThreadRepository(db)
+	ThreadRepository := postgres_client.NewThreadRepository(db)
 	ThreadService := services.NewThreadService(ThreadRepository, OpenAIAssistantClient)
 	WhatsappService := services.NewWhatsappService(UsersService, LogsService, OpenAIAssistantClient, UtilService, NumberPhonesService, MessageRepository, AssistantService, ConfigurationService, GoogleCalendarService, OauthConfig, EventsService, ThreadService)
 	WhatsappController := controllers.NewWhatsappController(WhatsappService)
-	BussinessRepository := mysql_client.NewBussinessRepository(db)
+	BussinessRepository := postgres_client.NewBussinessRepository(db)
 	BussinessService := services.NewBussinessService(BussinessRepository)
 	BussinessController := controllers.NewBussinessController(BussinessService)
 

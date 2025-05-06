@@ -1,4 +1,4 @@
-package mysql_client
+package postgres_client
 
 import (
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities"

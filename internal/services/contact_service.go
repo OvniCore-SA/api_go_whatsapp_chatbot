@@ -5,14 +5,14 @@ import (
 
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities"
-	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/repositories/mysql_client"
+	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/repositories/postgres_client"
 )
 
 type ContactsService struct {
-	repository *mysql_client.ContactsRepository
+	repository *postgres_client.ContactsRepository
 }
 
-func NewContactsService(repository *mysql_client.ContactsRepository) *ContactsService {
+func NewContactsService(repository *postgres_client.ContactsRepository) *ContactsService {
 	return &ContactsService{repository: repository}
 }
 

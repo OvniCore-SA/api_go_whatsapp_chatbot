@@ -3,14 +3,14 @@ package services
 import (
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities"
-	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/repositories/mysql_client"
+	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/repositories/postgres_client"
 )
 
 type ConfigurationsService struct {
-	repository *mysql_client.ConfigurationsRepository
+	repository *postgres_client.ConfigurationsRepository
 }
 
-func NewConfigurationsService(repository *mysql_client.ConfigurationsRepository) *ConfigurationsService {
+func NewConfigurationsService(repository *postgres_client.ConfigurationsRepository) *ConfigurationsService {
 	return &ConfigurationsService{repository: repository}
 }
 

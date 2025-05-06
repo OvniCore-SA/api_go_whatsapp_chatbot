@@ -12,7 +12,7 @@ import (
 
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/dtos"
 	"github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/entities"
-	repositories "github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/repositories/mysql_client"
+	repositories "github.com/OvniCore-SA/api_go_whatsapp_chatbot/internal/repositories/postgres_client"
 
 	"github.com/golang-jwt/jwt/v4"
 	"golang.org/x/crypto/bcrypt"
