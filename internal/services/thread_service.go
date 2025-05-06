@@ -47,7 +47,7 @@ func (s *ThreadService) GetOrCreateThread(contact dtos.ContactDto, assistant dto
 	newThread := entities.Thread{
 		OpenaiThreadsId: newThreadID,
 		ContactsID:      contact.ID,
-		Active:          true,
+		Active:          1,
 		CreatedAt:       time.Now(),
 	}
 
